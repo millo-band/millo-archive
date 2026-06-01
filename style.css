@@ -10,7 +10,7 @@
   --search-h: 0px;
   --mass-edit-h: 0px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --mini-h: 68px;       /* collapsed player height (not counting safe area) */
+  --mini-h: 84px;       /* Increased strictly to fit handle + controls cleanly */
   --border: 1px solid var(--black);
   --shadow: 2px 2px 0px var(--black);
   --shadow-lg: 3px 3px 0px var(--black);
@@ -326,9 +326,10 @@ body.player-expanded #player-bar {
 
 /* Pull handle */
 .player-handle-row {
+  height: 20px; /* Strict height to prevent squeezing flex containers below */
   position: relative; flex-shrink: 0;
   border-bottom: 1px solid rgba(0,0,0,0.08);
-  display: flex; align-items: center;
+  display: flex; align-items: center; justify-content: center;
 }
 .player-handle-btn {
   flex: 1; background: none; border: none;
@@ -541,17 +542,19 @@ body.player-expanded .player-full {
 .vol-pct { font-size: 9px; font-weight: 700; opacity: 0.4; flex-shrink: 0; min-width: 34px; text-align: right; }
 
 /* ── MINI STRIP ───────────────────────────── */
-.player-mini { flex-shrink: 0; display: flex; flex-direction: column; padding-bottom: var(--safe-bottom); }
+.player-mini { 
+  flex-shrink: 0; display: flex; flex-direction: column; padding-bottom: var(--safe-bottom); 
+}
 .player-mini-prog {
   height: 2px; background: rgba(0,0,0,0.1); width: 100%; flex-shrink: 0;
 }
-.player-mini-prog-fill { height: 100%; background: var(--black); width: 0%; transition: width 0.5s linear; }
 .player-mini-row {
-  display: grid; grid-template-columns: 1fr auto;
-  align-items: center; gap: 12px; padding: 0 16px; height: calc(var(--mini-h) - 2px);
+  display: flex; justify-content: space-between;
+  align-items: center; gap: 12px; padding: 0 16px; 
+  height: 62px; /* Set directly to fill out the remaining block space */
 }
 .player-mini-info { min-width: 0; cursor: pointer; display: flex; align-items: center; gap: 10px; flex: 1; }
-.player-mini-text-block { min-width: 0; flex: 1; }
+.player-mini-text-block { display: flex; flex-direction: column; justify-content: center; min-width: 0; flex: 1; }
 .player-title {
   font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; margin-bottom: 2px;
@@ -577,6 +580,4 @@ body.player-expanded .player-mini-controls { display: none; }
   .site-title { font-size: 22px; }
   .card-title { font-size: 12px; }
   .player-title-lg { font-size: 22px; }
-}
-
 }

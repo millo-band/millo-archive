@@ -79,13 +79,11 @@
     </div>
   </nav>
 
-  <!-- Search bar -->
   <div id="search-bar" style="display:none">
     <input type="search" id="search-input" placeholder="SEARCH TRACKS..." autocomplete="off" spellcheck="false" />
     <button class="search-clear" id="search-clear" aria-label="Clear">✕</button>
   </div>
 
-  <!-- Mass edit bar -->
   <div id="mass-edit-bar" style="display:none">
     <span class="mass-edit-count" id="mass-edit-count">0 SELECTED</span>
     <div class="mass-edit-tags">
@@ -109,10 +107,8 @@
     <div id="tracks-grid"></div>
   </main>
 
-  <!-- ══ PLAYER ════════════════════════════════ -->
   <div id="player-bar">
 
-    <!-- Pull handle — always at top of player -->
     <div class="player-handle-row">
       <button class="player-handle-btn" id="player-toggle-btn" aria-label="Toggle player">
         <div class="player-handle-pip"></div>
@@ -120,10 +116,8 @@
       <button class="player-close-btn" id="player-close-btn" aria-label="Close player">✕</button>
     </div>
 
-    <!-- ── EXPANDED CONTENT ── -->
     <div class="player-full" id="player-full">
 
-      <!-- Top panel: tabs for NOTES / VERSIONS -->
       <div class="player-panel-top">
         <div class="player-tabs" id="player-tabs">
           <button class="ptab active" data-tab="notes">NOTES</button>
@@ -143,12 +137,10 @@
         </div>
       </div>
 
-      <!-- Large Pixel Art Canvas Container -->
       <div class="player-art-panel" id="player-art-panel" style="display: none; justify-content: center; align-items: center; padding: 12px 0 4px; flex-shrink: 0;">
         <canvas id="player-art-canvas" width="128" height="128" style="image-rendering: pixelated; border: 2px solid var(--black); box-shadow: var(--shadow); background: var(--pink);"></canvas>
       </div>
 
-      <!-- Track info -->
       <div class="player-track-info">
         <div class="player-track-title-row">
           <span class="player-title-lg" id="player-title-lg">SELECT A TRACK</span>
@@ -160,7 +152,6 @@
         </div>
       </div>
 
-      <!-- Scrub bar -->
       <div class="player-scrub-section">
         <div class="player-progress-track" id="player-progress-track">
           <div class="player-progress-fill" id="player-progress-fill"></div>
@@ -172,7 +163,6 @@
         </div>
       </div>
 
-      <!-- Main controls -->
       <div class="player-controls-main">
         <button class="pctrl-btn pctrl-loop" id="btn-loop" aria-label="Loop">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -199,7 +189,6 @@
         </a>
       </div>
 
-      <!-- Tag editor + Volume -->
       <div class="player-utilities">
         <div class="player-tag-row" id="player-tag-row">
           <span class="util-label">TAG</span>
@@ -217,10 +206,7 @@
         </div>
       </div>
 
-    </div><!-- end .player-full -->
-
-    <!-- ── MINI STRIP ── -->
-    <div class="player-mini">
+    </div><div class="player-mini">
       <div class="player-mini-prog">
         <div class="player-mini-prog-fill" id="player-mini-fill"></div>
       </div>
@@ -247,9 +233,7 @@
       </div>
     </div>
 
-  </div><!-- end #player-bar -->
-
-  <audio id="audio-player" preload="none"></audio>
+  </div><audio id="audio-player" preload="none"></audio>
   <script src="app.js"></script>
 </body>
 </html>

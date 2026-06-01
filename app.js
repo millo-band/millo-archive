@@ -79,7 +79,6 @@
     sortMenu:$('sort-menu'), sortItems:document.querySelectorAll('#sort-menu .dropdown-item'),
     searchBtn:$('search-btn'), searchBar:$('search-bar'),
     searchInput:$('search-input'), searchClear:$('search-clear'),
-    // player - expanded
     playerBar:$('player-bar'), playerFull:$('player-full'),
     playerToggleBtn:$('player-toggle-btn'),
     playerTitleLg:$('player-title-lg'), playerStageLg:$('player-stage-lg'),
@@ -95,13 +94,11 @@
     tagEditBtns:document.querySelectorAll('.tag-edit-btn'),
     playerNote:$('player-note'), noteStatus:$('note-status'),
     playerVolume:$('player-volume'), volPct:$('vol-pct'),
-    // player - mini strip
     playerTitle:$('player-title'), playerStage:$('player-stage'),
     playerExpandBtn:$('player-expand-btn'),
     miniFill:$('player-mini-fill'),
     miniBtnPlay:$('mini-btn-play'), miniBtnPrev:$('mini-btn-prev'), miniBtnNext:$('mini-btn-next'),
     miniIconPlay:$('mini-icon-play'), miniIconPause:$('mini-icon-pause'),
-    // edit mode
     editModeBtn:$('edit-mode-btn'), massEditBar:$('mass-edit-bar'),
     massEditCount:$('mass-edit-count'), massEditDone:$('mass-edit-done'),
     massTagBtns:document.querySelectorAll('.mass-tag-btn'),
@@ -359,149 +356,93 @@
     });
   }
 
-  // ── Procedural 1-Bit Pixel Art Generator ──────────────────
+  // ── 50-Algorithm Procedural 1-Bit Art Generator ──────────────────
   function generatePixelArt(canvasId, seedString) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return null;
     const ctx = canvas.getContext('2d');
-    
     const size = 64; 
     canvas.width = size;
     canvas.height = size;
     
-    ctx.fillStyle = '#FF91AF'; // Pink background
+    // Clear canvas
+    ctx.fillStyle = '#FF91AF';
     ctx.fillRect(0, 0, size, size);
-    ctx.fillStyle = '#000000'; // Black pixels
+    ctx.fillStyle = '#000000';
 
+    // Build seeded random hash
     let hash = 0;
-    for (let i = 0; i < seedString.length; i++) {
-      hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
-    }
+    for (let i = 0; i < seedString.length; i++) hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
+    function random() { const x = Math.sin(hash++) * 10000; return x - Math.floor(x); }
 
-    function random() {
-      const x = Math.sin(hash++) * 10000;
-      return x - Math.floor(x);
-    }
+    // Pick 1 of exactly 50 algorithmic math renderers!
+    const artType = Math.floor(random() * 50);
 
-    const artType = Math.floor(random() * 4);
+    for(let x=0; x<size; x++) {
+      for(let y=0; y<size; y++) {
+        let nx = (x-32)/32, ny = (y-32)/32;
+        let ax = Math.abs(nx), ay = Math.abs(ny);
+        let r = Math.sqrt(nx*nx + ny*ny), a = Math.atan2(ny, nx);
+        let draw = false;
 
-    if (artType === 0) {
-      // Mirrored Emblem / Sigil
-      const halfWidth = size / 2;
-      const ringRad = Math.floor(random() * 8) + 16;
-      if (random() > 0.3) {
-        for (let angle = 0; angle < 360; angle += 1) {
-          const rads = angle * Math.PI / 180;
-          const px = Math.round(32 + Math.cos(rads) * ringRad);
-          const py = Math.round(32 + Math.sin(rads) * ringRad);
-          if ((px + py) % 2 === 0) {
-            ctx.fillRect(px, py, 1, 1);
-          }
+        switch(artType) {
+          case 0: draw = nx*nx*2 + ny*ny*8 < 1 && r > 0.15; break; // Eye
+          case 1: draw = ny > ax - 0.2 + Math.sin(nx*15)*0.1; break; // Mountain
+          case 2: draw = (ax < 0.1 && ny > 0) || (nx*nx + (ny+0.3)**2 < 0.3); break; // Tree
+          case 3: draw = (x%16 < 14) && (y%16 < 14); break; // Blocks
+          case 4: draw = (nx+0.5)**2+ny**2<0.1 || (nx-0.5)**2+ny**2<0.1 || (ny>-0.1 && ny<0 && ax<0.5); break; // Bike
+          case 5: draw = Math.abs(Math.sin(ny*10) - nx) < 0.1 || Math.abs(Math.sin(ny*10 + 3.14) - nx) < 0.1 || (y%8 < 2 && ax < 0.8); break; // DNA
+          case 6: draw = ax < 0.4 && ny > -0.6 && !(nx > 0.2 && nx < 0.3 && ay<0.05); break; // Door
+          case 7: draw = ((nx+0.3)**2+(ny+0.3)**2<0.1) || (random() < 0.05) || (ny > 0.6 && Math.sin(nx*10)>0); break; // Space
+          case 8: draw = ny > 0.1 && (x%12 < 10) && (y%8 < 6) && random() < 0.8; break; // City
+          case 9: draw = r<0.7 && !(ny<0 && Math.abs(ax-0.3)<0.1) && !(ny>0.3 && ax<0.2); break; // Face
+          case 10: draw = ny > Math.sin(nx*10)*0.3; break; // Wave
+          case 11: draw = Math.sin(nx*20) * Math.sin(ny*20) > 0; break; // Checkers
+          case 12: draw = ny > ax && (y%6 < 4); break; // Pyramid
+          case 13: draw = ax < 0.05 && ny > -0.8 && ny < 0.6 || (ax<0.3 && Math.abs(ny-0.5)<0.05); break; // Sword
+          case 14: draw = ny < 0.5 - nx*nx && ny > -0.6 && ax < 0.6 && r > 0.2; break; // Shield
+          case 15: draw = r < 0.5 + 0.2*Math.sin(a*5) && r > 0.1; break; // Flower
+          case 16: draw = r < 0.3 || Math.sin(a*12) > 0.8; break; // Sun
+          case 17: draw = r < 0.5 && (nx-0.2)**2+(ny-0.2)**2 > 0.4; break; // Moon
+          case 18: draw = r<0.3 || (nx-0.3)**2+(ny+0.1)**2<0.2 || (nx+0.3)**2+(ny+0.2)**2<0.2; break; // Cloud
+          case 19: draw = Math.abs(nx - Math.sin(ny*15)*0.1 - ny*0.2) < 0.05; break; // Lightning
+          case 20: draw = (nx*nx + ny*ny - 0.3)**3 - nx*nx*ny*ny*ny < 0; break; // Heart
+          case 21: draw = (x+y)%10 < 2 && random() < 0.5; break; // Rain
+          case 22: draw = (r % 0.2 < 0.05) || (Math.abs(Math.sin(a*4)) < 0.1); break; // Web
+          case 23: draw = Math.sin(r*30) > 0; break; // Target
+          case 24: draw = Math.sin(r*30 - a*3) > 0; break; // Spiral
+          case 25: draw = (x%4===0 || y%4===0) && random()>0.2; break; // Maze
+          case 26: draw = ny > 0 && (Math.sin(nx/ny*10)>0 || Math.sin(1/ny*5)>0); break; // Grid
+          case 27: draw = ny > 0 && y%4 < 3 && nx*10 - Math.floor(nx*10) < 0.8 && random()>0.3; break; // Bars
+          case 28: draw = ax<0.6 && ay<0.4 && !(ay<0.1 && Math.abs(ax-0.3)<0.1); break; // Cassette
+          case 29: draw = r<0.7 && r>0.1 && Math.sin(r*40)>-0.5; break; // Vinyl
+          case 30: draw = (nx*nx + ny*ny*16 < 0.2) || (nx*nx*2 + (ny+0.2)**2*2 < 0.1); break; // UFO
+          case 31: draw = nx + ny > 0 && (x%8 < 7) && (y%8 < 7); break; // Stairs
+          case 32: draw = ax < ay + 0.1 && ay < 0.7; break; // Hourglass
+          case 33: draw = ax < 0.6 && Math.abs(ny - Math.sin(nx*5)*0.2) < 0.3; break; // Flag
+          case 34: draw = ax<0.5 && ay<0.5 && ax>0.05 && ay>0.05; break; // Window
+          case 35: draw = ax + ay < 0.6 && r > 0.1; break; // Diamond
+          case 36: draw = ax<0.6 && ay<0.4 && (Math.abs(nx-ny)<0.05 || Math.abs(nx+ny)<0.05); break; // Envelope
+          case 37: draw = ax<0.6 && ay<0.4 && ax>0.05; break; // Book
+          case 38: draw = (ax<0.3 && ny>-0.4 && ny<0.4) || (nx>0.3 && nx<0.5 && ay<0.2 && Math.abs(nx-0.4)>0.05); break; // Cup
+          case 39: draw = ((nx-0.4)**2+ny**2<0.05) || ((nx+0.4)**2+ny**2<0.05) || (ay<0.02 && ax<0.4); break; // Glasses
+          case 40: draw = ay < ax && ax<0.6; break; // Bowtie
+          case 41: draw = r < 0.6 && Math.cos(a*5) > 0.5; break; // Star
+          case 42: draw = r<0.3 || (Math.abs(ny - nx*0.5)<0.05 && ax<0.6); break; // Planet
+          case 43: draw = ay<0.4 && Math.sin(nx*Math.sin(nx*50)*50) > 0; break; // Barcode
+          case 44: draw = (ax<0.4 && ay<0.6) && !(ax<0.3 && ay<0.5 && ny<0) || (ax<0.1 && ny<-0.6 && ny>-0.7); break; // Battery
+          case 45: draw = ax<0.5 && ay<0.5 && !(nx>0.1 && nx<0.4 && ny<-0.2); break; // Floppy
+          case 46: draw = ax<0.5 && ny>0 && ny < 0.5 - Math.abs(Math.sin(nx*10)*0.2); break; // Crown
+          case 47: draw = ax<0.05 && ay<0.5 || (r>0.4 && r<0.5 && ny>0) || (ay<0.05 && ax<0.3); break; // Anchor
+          case 48: draw = ax<0.4 && ay<0.4 && r>0.1; break; // Dice
+          case 49: draw = (nx*nx + ny*ny*2 < 0.3) && !(Math.abs(ax-0.2)<0.1 && ny<0.1 && ny>-0.1); break; // Alien
         }
-      }
-      for (let x = 6; x < halfWidth; x++) {
-        for (let y = 6; y < size - 6; y++) {
-          const val = Math.sin(x * 0.3) * Math.cos(y * 0.3);
-          if (val > 0.1 && (random() < 0.45)) {
-            ctx.fillRect(x, y, 1, 1);
-            ctx.fillRect(size - 1 - x, y, 1, 1);
-          }
-        }
-      }
-      ctx.fillRect(30, 30, 4, 4);
-    } else if (artType === 1) {
-      // Shaded Retro Planet Sphere
-      const radius = 22;
-      const cx = 32, cy = 32;
-      const lx = 20, ly = 20;
 
-      for (let x = 0; x < size; x++) {
-        for (let y = 0; y < size; y++) {
-          const dx = x - cx;
-          const dy = y - cy;
-          const dist = Math.sqrt(dx*dx + dy*dy);
-          if (dist < radius) {
-            const dlx = x - lx;
-            const dly = y - ly;
-            const lightDist = Math.sqrt(dlx*dlx + dly*dly);
-
-            if (lightDist < 12) {
-              // Highlight (leave pink)
-            } else if (lightDist < 20) {
-              if (x % 3 === 0 && y % 3 === 0) ctx.fillRect(x, y, 1, 1);
-            } else if (lightDist < 28) {
-              if ((x + y) % 2 === 0) ctx.fillRect(x, y, 1, 1);
-            } else if (lightDist < 36) {
-              if ((x + y) % 2 === 0 || x % 2 === 0) ctx.fillRect(x, y, 1, 1);
-            } else {
-              ctx.fillRect(x, y, 1, 1);
-            }
-          } else if (dist >= radius && dist < radius + 1) {
-            ctx.fillRect(x, y, 1, 1);
-          }
-        }
-      }
-    } else if (artType === 2) {
-      // Mirrored Cyber Mask
-      const halfWidth = size / 2;
-      for (let x = 8; x < halfWidth; x++) {
-        const widthLimit = Math.sin(((x - 8) / 24) * Math.PI) * 22 + 8;
-        for (let y = 12; y < size - 12; y++) {
-          const isEye = (y > 22 && y < 28 && x > 14 && x < 20);
-          const isMouth = (y > 40 && y < 46 && x > 18 && x < 26);
-          if (isEye) {
-            if (y === 23 || y === 27 || x === 15 || x === 19) {
-              ctx.fillRect(x, y, 1, 1);
-              ctx.fillRect(size - 1 - x, y, 1, 1);
-            }
-            continue;
-          }
-          if (isMouth) {
-            if (x % 2 === 0 || y % 2 === 0) {
-              ctx.fillRect(x, y, 1, 1);
-              ctx.fillRect(size - 1 - x, y, 1, 1);
-            }
-            continue;
-          }
-          const noiseVal = random();
-          if (noiseVal < 0.52 && y < widthLimit + 24) {
-            if ((x + y) % 2 === 0 || noiseVal < 0.25) {
-              ctx.fillRect(x, y, 1, 1);
-              ctx.fillRect(size - 1 - x, y, 1, 1);
-            }
-          }
-        }
-      }
-    } else {
-      // Waveform Landscape
-      const waveAmp1 = 6 + random() * 10;
-      const waveFreq1 = 0.05 + random() * 0.05;
-      const waveAmp2 = 3 + random() * 6;
-      const waveFreq2 = 0.1 + random() * 0.1;
-
-      for (let x = 0; x < size; x++) {
-        const waveY = Math.round(38 + Math.sin(x * waveFreq1) * waveAmp1 + Math.cos(x * waveFreq2) * waveAmp2);
-        for (let y = 0; y < size; y++) {
-          if (y > waveY) {
-            const ditherPct = (y - waveY) / (size - waveY);
-            if (ditherPct > 0.6 || (x + y) % 2 === 0 || (y % 4 === 0 && x % 2 === 0)) {
-              ctx.fillRect(x, y, 1, 1);
-            }
-          } else {
-            const ditherPct = y / waveY;
-            if (ditherPct < 0.3) {
-              if (random() < 0.02) ctx.fillRect(x, y, 1, 1);
-            } else if (ditherPct < 0.6) {
-              if (x % 4 === 0 && y % 4 === 0) ctx.fillRect(x, y, 1, 1);
-            } else {
-              if ((x + y) % 2 === 0 && random() < 0.5) ctx.fillRect(x, y, 1, 1);
-            }
-          }
-        }
-        ctx.fillRect(x, waveY, 1, 1);
+        // Add 1-Bit Dither noise overlay for retro texture
+        if (draw) ctx.fillRect(x, y, 1, 1);
+        else if (random() < 0.03) ctx.fillRect(x, y, 1, 1);
       }
     }
-
     return canvas.toDataURL('image/png');
   }
 
@@ -774,7 +715,7 @@
   el.miniBtnPrev.addEventListener('click',playPrev);
   el.miniBtnNext.addEventListener('click',playNext);
 
-  // Full controls (same buttons, same IDs)
+  // Full controls
   el.btnPlay.addEventListener('click',togglePlayPause);
   el.btnPrev.addEventListener('click',playPrev);
   el.btnNext.addEventListener('click',playNext);
