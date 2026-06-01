@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <title>MILLO — ARCHIVE</title>
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23FF91AF'/><rect x='4' y='6' width='4' height='20' fill='%23000'/><rect x='14' y='6' width='4' height='20' fill='%23000'/><rect x='24' y='6' width='4' height='20' fill='%23000'/><rect x='8' y='6' width='6' height='4' fill='%23000'/><rect x='18' y='6' width='6' height='4' fill='%23000'/><rect x='8' y='14' width='6' height='4' fill='%23000'/><rect x='18' y='14' width='6' height='4' fill='%23000'/></svg>">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+  <meta property="og:title" content="MILLO — ARCHIVE" />
+  <meta property="og:description" content="Personal music archive. Demos, ideas, finished tracks." />
+  <meta property="og:image" content="og-image.png" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="MILLO — ARCHIVE" />
+  <meta name="twitter:description" content="Personal music archive. Demos, ideas, finished tracks." />
+  <meta name="twitter:image" content="og-image.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header id="site-header">
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="header-title-block">
+          <div class="header-title-row">
+            <span class="site-title">MILLO</span>
+            <span class="site-sub">ARCHIVE</span>
+          </div>
+          <div class="header-stats" id="header-stats"></div>
+        </div>
+      </div>
+      <button class="shuffle-radio-btn" id="shuffle-radio-btn">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M1 4h8M6 1l3 3-3 3M15 12H7M10 9l3 3-3 3M1 12h2a4 4 0 0 1 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"/></svg>
+        RADIO
+      </button>
+    </div>
+  </header>
+
+  <nav id="controls-bar">
+    <div id="controls-left">
+      <div class="dropdown" id="filter-dropdown">
+        <button class="dropdown-btn" id="filter-btn-toggle">
+          <span id="filter-label">ALL</span>
+          <svg width="8" height="8" viewBox="0 0 8 8"><polygon points="0,2 8,2 4,7" fill="#000"/></svg>
+        </button>
+        <div class="dropdown-menu" id="filter-menu">
+          <button class="dropdown-item active" data-filter="all">ALL</button>
+          <button class="dropdown-item" data-filter="demo">DEMOS</button>
+          <button class="dropdown-item" data-filter="finished">FINISHED</button>
+          <button class="dropdown-item" data-filter="complete">COMPLETE</button>
+          <button class="dropdown-item" data-filter="idea">IDEAS</button>
+          <button class="dropdown-item" data-filter="starred">STARRED ★</button>
+          <button class="dropdown-item dropdown-item-voice" data-filter="voice">VOICE NOTES <span id="voice-count-badge"></span></button>
+        </div>
+      </div>
+      <div class="dropdown" id="sort-dropdown">
+        <button class="dropdown-btn" id="sort-btn-toggle">
+          <span id="sort-label">NEWEST</span>
+          <svg width="8" height="8" viewBox="0 0 8 8"><polygon points="0,2 8,2 4,7" fill="#000"/></svg>
+        </button>
+        <div class="dropdown-menu" id="sort-menu">
+          <button class="dropdown-item active" data-sort="newest">NEWEST</button>
+          <button class="dropdown-item" data-sort="oldest">OLDEST</button>
+        </div>
+      </div>
+      <button class="icon-btn" id="search-btn" aria-label="Search">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+          <circle cx="6.5" cy="6.5" r="5" stroke="#000" stroke-width="1.8"/>
+          <line x1="10.5" y1="10.5" x2="15" y2="15" stroke="#000" stroke-width="1.8" stroke-linecap="square"/>
+        </svg>
+      </button>
+      <button class="edit-mode-btn" id="edit-mode-btn">EDIT</button>
+    </div>
+  </nav>
+
+  <!-- Search bar -->
+  <div id="search-bar" style="display:none">
+    <input type="search" id="search-input" placeholder="SEARCH TRACKS..." autocomplete="off" spellcheck="false" />
+    <button class="search-clear" id="search-clear" aria-label="Clear">✕</button>
+  </div>
+
+  <!-- Mass edit bar -->
+  <div id="mass-edit-bar" style="display:none">
+    <span class="mass-edit-count" id="mass-edit-count">0 SELECTED</span>
+    <div class="mass-edit-tags">
+      <span class="mass-edit-label">SET TAG:</span>
+      <button class="mass-tag-btn" data-stage="idea">IDEA</button>
+      <button class="mass-tag-btn" data-stage="demo">DEMO</button>
+      <button class="mass-tag-btn" data-stage="finished">FIN</button>
+      <button class="mass-tag-btn" data-stage="complete">COMP</button>
+    </div>
+    <button class="mass-edit-done" id="mass-edit-done">DONE</button>
+  </div>
+
+  <main id="main-content">
+    <section id="whats-new" style="display:none">
+      <div class="section-label">WHAT'S NEW</div>
+      <div id="new-tracks-row"></div>
+    </section>
+    <div id="loading-state"><span class="loading-text">LOADING...</span></div>
+    <div id="empty-state" style="display:none"><span class="loading-text">NO TRACKS FOUND</span></div>
+    <div id="voice-list" style="display:none"></div>
+    <div id="tracks-grid"></div>
+  </main>
+
+  <!-- ══ PLAYER ════════════════════════════════ -->
+  <div id="player-bar">
+
+    <!-- Pull handle — always at top of player -->
+    <div class="player-handle-row">
+      <button class="player-handle-btn" id="player-toggle-btn" aria-label="Toggle player">
+        <div class="player-handle-pip"></div>
+      </button>
+      <button class="player-close-btn" id="player-close-btn" aria-label="Close player">✕</button>
+    </div>
+
+    <!-- ── EXPANDED CONTENT (between handle and mini strip) ── -->
+    <div class="player-full" id="player-full">
+
+      <!-- Top panel: tabs for NOTES / VERSIONS -->
+      <div class="player-panel-top">
+        <div class="player-tabs" id="player-tabs">
+          <button class="ptab active" data-tab="notes">NOTES</button>
+          <button class="ptab" data-tab="versions" id="tab-btn-versions">VERSIONS</button>
+        </div>
+
+        <div class="ptab-panel active" id="tab-notes">
+          <textarea id="player-note" class="player-note" placeholder="No note yet. Tap to add one..." disabled></textarea>
+          <div class="note-footer">
+            <span class="note-status" id="note-status"></span>
+          </div>
+        </div>
+
+        <div class="ptab-panel" id="tab-versions">
+          <div class="player-versions-list" id="player-versions"></div>
+          <div class="no-versions-msg" id="no-versions-msg">No other versions.</div>
+        </div>
+      </div>
+
+      <!-- Track info -->
+      <div class="player-track-info">
+        <div class="player-track-title-row">
+          <span class="player-title-lg" id="player-title-lg">SELECT A TRACK</span>
+          <button class="player-fav-btn" id="player-fav-btn" aria-label="Favourite">★</button>
+        </div>
+        <div class="player-track-meta">
+          <span class="player-stage-lg" id="player-stage-lg"></span>
+          <span class="player-filename-lg" id="player-filename-lg"></span>
+        </div>
+      </div>
+
+      <!-- Scrub bar -->
+      <div class="player-scrub-section">
+        <div class="player-progress-track" id="player-progress-track">
+          <div class="player-progress-fill" id="player-progress-fill"></div>
+          <div class="player-progress-thumb" id="player-progress-thumb"></div>
+        </div>
+        <div class="player-time-row">
+          <span class="player-time" id="player-time">0:00</span>
+          <span class="player-dur" id="player-dur">0:00</span>
+        </div>
+      </div>
+
+      <!-- Main controls -->
+      <div class="player-controls-main">
+        <button class="pctrl-btn pctrl-loop" id="btn-loop" aria-label="Loop">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M2 10a6 6 0 1 0 1.5-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/>
+            <polyline points="1,4 3.5,6.5 6,4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"/>
+          </svg>
+        </button>
+        <button class="pctrl-btn pctrl-skip" id="btn-prev" aria-label="Previous">
+          <svg width="20" height="20" viewBox="0 0 12 12"><polygon points="11,1 11,11 1,6" fill="currentColor"/><rect x="0" y="1" width="2" height="10" fill="currentColor"/></svg>
+        </button>
+        <button class="pctrl-btn pctrl-play" id="btn-play" aria-label="Play/Pause">
+          <svg id="icon-play" width="28" height="28" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>
+          <svg id="icon-pause" width="28" height="28" viewBox="0 0 16 16" style="display:none"><rect x="1" y="1" width="5" height="14" fill="currentColor"/><rect x="10" y="1" width="5" height="14" fill="currentColor"/></svg>
+        </button>
+        <button class="pctrl-btn pctrl-skip" id="btn-next" aria-label="Next">
+          <svg width="20" height="20" viewBox="0 0 12 12"><polygon points="1,1 1,11 11,6" fill="currentColor"/><rect x="10" y="1" width="2" height="10" fill="currentColor"/></svg>
+        </button>
+        <a class="pctrl-btn pctrl-download" id="download-btn" aria-label="Download" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <line x1="8" y1="1" x2="8" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/>
+            <polyline points="4,8 8,12 12,8" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"/>
+            <line x1="2" y1="15" x2="14" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- Tag editor + Volume -->
+      <div class="player-utilities">
+        <div class="player-tag-row" id="player-tag-row">
+          <span class="util-label">TAG</span>
+          <button class="tag-edit-btn" data-stage="idea">IDEA</button>
+          <button class="tag-edit-btn" data-stage="demo">DEMO</button>
+          <button class="tag-edit-btn" data-stage="finished">FINISHED</button>
+          <button class="tag-edit-btn" data-stage="complete">COMPLETE</button>
+        </div>
+        <div class="player-vol-row">
+          <span class="util-label">VOL</span>
+          <button class="vol-btn" id="vol-down">−</button>
+          <input type="range" id="player-volume" class="vol-slider" min="0" max="1" step="0.05" value="1">
+          <button class="vol-btn" id="vol-up">+</button>
+          <span class="vol-pct" id="vol-pct">100%</span>
+        </div>
+      </div>
+
+    </div><!-- end .player-full -->
+
+    <!-- ── MINI STRIP — always visible at bottom ── -->
+    <div class="player-mini">
+      <div class="player-mini-prog">
+        <div class="player-mini-prog-fill" id="player-mini-fill"></div>
+      </div>
+      <div class="player-mini-row">
+        <div class="player-mini-info" id="player-expand-btn">
+          <span class="player-title" id="player-title">— SELECT A TRACK —</span>
+          <span class="player-stage" id="player-stage"></span>
+        </div>
+        <div class="player-mini-controls">
+          <button class="mini-ctrl" id="mini-btn-prev" aria-label="Previous">
+            <svg width="14" height="14" viewBox="0 0 12 12"><polygon points="11,1 11,11 1,6" fill="#000"/><rect x="0" y="1" width="2" height="10" fill="#000"/></svg>
+          </button>
+          <button class="mini-ctrl mini-play" id="mini-btn-play" aria-label="Play">
+            <svg id="mini-icon-play" width="18" height="18" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="#000"/></svg>
+            <svg id="mini-icon-pause" width="18" height="18" viewBox="0 0 16 16" style="display:none"><rect x="1" y="1" width="5" height="14" fill="#000"/><rect x="10" y="1" width="5" height="14" fill="#000"/></svg>
+          </button>
+          <button class="mini-ctrl" id="mini-btn-next" aria-label="Next">
+            <svg width="14" height="14" viewBox="0 0 12 12"><polygon points="1,1 1,11 11,6" fill="#000"/><rect x="10" y="1" width="2" height="10" fill="#000"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end #player-bar -->
+
+  <audio id="audio-player" preload="none"></audio>
+  <script src="app.js"></script>
+</body>
+</html>
