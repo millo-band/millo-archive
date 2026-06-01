@@ -290,10 +290,38 @@ body.edit-mode .card-select-check { display: flex; }
   height: var(--mini-h);
   background: var(--pink); border-top: 2px solid var(--black);
   z-index: 300; overflow: hidden; display: flex; flex-direction: column;
-  transition: height 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: height 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+              right 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+              bottom 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+              border-radius 0.38s cubic-bezier(0.4, 0, 0.2, 1);
 }
 body.player-expanded #player-bar {
   height: calc(100vh - var(--header-h) - var(--controls-h) - var(--search-h) - var(--mass-edit-h));
+}
+
+/* Desktop Adaptive Floating (Gmail Box Style) */
+@media (min-width: 768px) {
+  #player-bar {
+    left: auto;
+    right: 24px;
+    bottom: 24px;
+    width: 390px;
+    border: 2px solid var(--black);
+    box-shadow: var(--shadow-lg);
+    background: var(--pink);
+    border-radius: 4px;
+  }
+  body.player-expanded #player-bar {
+    height: 620px; /* Perfectly scaled window height for desktop display */
+    bottom: 24px;
+    width: 390px;
+  }
+  #main-content {
+    bottom: 0 !important; /* Flow naturally behind floating widget */
+    padding-bottom: 40px;
+  }
 }
 
 /* Pull handle */
@@ -402,7 +430,7 @@ body.player-expanded .player-full {
 
 /* Track info */
 .player-track-info {
-  padding: 16px 18px 10px; flex-shrink: 0; border-bottom: 1px dashed rgba(0,0,0,0.15);
+  padding: 12px 18px 10px; flex-shrink: 0; border-bottom: 1px dashed rgba(0,0,0,0.15);
 }
 .player-track-title-row {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 6px;
@@ -522,7 +550,8 @@ body.player-expanded .player-full {
   display: grid; grid-template-columns: 1fr auto;
   align-items: center; gap: 12px; padding: 0 16px; height: calc(var(--mini-h) - 2px);
 }
-.player-mini-info { min-width: 0; cursor: pointer; }
+.player-mini-info { min-width: 0; cursor: pointer; display: flex; align-items: center; gap: 10px; flex: 1; }
+.player-mini-text-block { min-width: 0; flex: 1; }
 .player-title {
   font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; margin-bottom: 2px;
@@ -548,4 +577,6 @@ body.player-expanded .player-mini-controls { display: none; }
   .site-title { font-size: 22px; }
   .card-title { font-size: 12px; }
   .player-title-lg { font-size: 22px; }
+}
+
 }

@@ -359,6 +359,152 @@
     });
   }
 
+  // ── Procedural 1-Bit Pixel Art Generator ──────────────────
+  function generatePixelArt(canvasId, seedString) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    const ctx = canvas.getContext('2d');
+    
+    const size = 64; 
+    canvas.width = size;
+    canvas.height = size;
+    
+    ctx.fillStyle = '#FF91AF'; // Pink background
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#000000'; // Black pixels
+
+    let hash = 0;
+    for (let i = 0; i < seedString.length; i++) {
+      hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    function random() {
+      const x = Math.sin(hash++) * 10000;
+      return x - Math.floor(x);
+    }
+
+    const artType = Math.floor(random() * 4);
+
+    if (artType === 0) {
+      // Mirrored Emblem / Sigil
+      const halfWidth = size / 2;
+      const ringRad = Math.floor(random() * 8) + 16;
+      if (random() > 0.3) {
+        for (let angle = 0; angle < 360; angle += 1) {
+          const rads = angle * Math.PI / 180;
+          const px = Math.round(32 + Math.cos(rads) * ringRad);
+          const py = Math.round(32 + Math.sin(rads) * ringRad);
+          if ((px + py) % 2 === 0) {
+            ctx.fillRect(px, py, 1, 1);
+          }
+        }
+      }
+      for (let x = 6; x < halfWidth; x++) {
+        for (let y = 6; y < size - 6; y++) {
+          const val = Math.sin(x * 0.3) * Math.cos(y * 0.3);
+          if (val > 0.1 && (random() < 0.45)) {
+            ctx.fillRect(x, y, 1, 1);
+            ctx.fillRect(size - 1 - x, y, 1, 1);
+          }
+        }
+      }
+      ctx.fillRect(30, 30, 4, 4);
+    } else if (artType === 1) {
+      // Shaded Retro Planet Sphere
+      const radius = 22;
+      const cx = 32, cy = 32;
+      const lx = 20, ly = 20;
+
+      for (let x = 0; x < size; x++) {
+        for (let y = 0; y < size; y++) {
+          const dx = x - cx;
+          const dy = y - cy;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < radius) {
+            const dlx = x - lx;
+            const dly = y - ly;
+            const lightDist = Math.sqrt(dlx*dlx + dly*dly);
+
+            if (lightDist < 12) {
+              // Highlight (leave pink)
+            } else if (lightDist < 20) {
+              if (x % 3 === 0 && y % 3 === 0) ctx.fillRect(x, y, 1, 1);
+            } else if (lightDist < 28) {
+              if ((x + y) % 2 === 0) ctx.fillRect(x, y, 1, 1);
+            } else if (lightDist < 36) {
+              if ((x + y) % 2 === 0 || x % 2 === 0) ctx.fillRect(x, y, 1, 1);
+            } else {
+              ctx.fillRect(x, y, 1, 1);
+            }
+          } else if (dist >= radius && dist < radius + 1) {
+            ctx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+    } else if (artType === 2) {
+      // Mirrored Cyber Mask
+      const halfWidth = size / 2;
+      for (let x = 8; x < halfWidth; x++) {
+        const widthLimit = Math.sin(((x - 8) / 24) * Math.PI) * 22 + 8;
+        for (let y = 12; y < size - 12; y++) {
+          const isEye = (y > 22 && y < 28 && x > 14 && x < 20);
+          const isMouth = (y > 40 && y < 46 && x > 18 && x < 26);
+          if (isEye) {
+            if (y === 23 || y === 27 || x === 15 || x === 19) {
+              ctx.fillRect(x, y, 1, 1);
+              ctx.fillRect(size - 1 - x, y, 1, 1);
+            }
+            continue;
+          }
+          if (isMouth) {
+            if (x % 2 === 0 || y % 2 === 0) {
+              ctx.fillRect(x, y, 1, 1);
+              ctx.fillRect(size - 1 - x, y, 1, 1);
+            }
+            continue;
+          }
+          const noiseVal = random();
+          if (noiseVal < 0.52 && y < widthLimit + 24) {
+            if ((x + y) % 2 === 0 || noiseVal < 0.25) {
+              ctx.fillRect(x, y, 1, 1);
+              ctx.fillRect(size - 1 - x, y, 1, 1);
+            }
+          }
+        }
+      }
+    } else {
+      // Waveform Landscape
+      const waveAmp1 = 6 + random() * 10;
+      const waveFreq1 = 0.05 + random() * 0.05;
+      const waveAmp2 = 3 + random() * 6;
+      const waveFreq2 = 0.1 + random() * 0.1;
+
+      for (let x = 0; x < size; x++) {
+        const waveY = Math.round(38 + Math.sin(x * waveFreq1) * waveAmp1 + Math.cos(x * waveFreq2) * waveAmp2);
+        for (let y = 0; y < size; y++) {
+          if (y > waveY) {
+            const ditherPct = (y - waveY) / (size - waveY);
+            if (ditherPct > 0.6 || (x + y) % 2 === 0 || (y % 4 === 0 && x % 2 === 0)) {
+              ctx.fillRect(x, y, 1, 1);
+            }
+          } else {
+            const ditherPct = y / waveY;
+            if (ditherPct < 0.3) {
+              if (random() < 0.02) ctx.fillRect(x, y, 1, 1);
+            } else if (ditherPct < 0.6) {
+              if (x % 4 === 0 && y % 4 === 0) ctx.fillRect(x, y, 1, 1);
+            } else {
+              if ((x + y) % 2 === 0 && random() < 0.5) ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        }
+        ctx.fillRect(x, waveY, 1, 1);
+      }
+    }
+
+    return canvas.toDataURL('image/png');
+  }
+
   // ── Player bar update ──────────────────────
   function updatePlayerBar(track, group) {
     if (!track) {
@@ -371,6 +517,8 @@
       el.downloadBtn.style.display='none';
       el.playerNote.value=''; el.playerNote.disabled=true;
       el.playerVersionsList.innerHTML=''; el.noVersionsMsg.style.display='block';
+      $('mini-art-canvas').style.display = 'none';
+      $('player-art-panel').style.display = 'none';
       updateTagEditorState(null); return;
     }
 
@@ -378,6 +526,15 @@
     el.playerTitle.textContent=track.title;
     el.playerStage.textContent=TAG_LABEL[track.stage]||'';
     el.playerStage.style.display=TAG_LABEL[track.stage]?'inline-block':'none';
+
+    // Canvas procedural 1-bit rendering
+    $('mini-art-canvas').style.display = 'block';
+    generatePixelArt('mini-art-canvas', track.title);
+    $('player-art-panel').style.display = 'flex';
+    const dataUrl = generatePixelArt('player-art-canvas', track.title);
+    
+    // Cache the dataURL on the track object so lockscreen mediaSession can display it instantly
+    track.artDataUrl = dataUrl;
 
     // Expanded info
     el.playerTitleLg.textContent=track.title;
@@ -493,7 +650,10 @@
     document.body.classList.toggle('player-expanded',expanded);
   }
   el.playerToggleBtn.addEventListener('click',()=>setPlayerExpanded(!state.playerExpanded));
-  el.playerExpandBtn.addEventListener('click',()=>{ if(state.playingTrack)setPlayerExpanded(!state.playerExpanded); });
+  el.playerExpandBtn.addEventListener('click',(e)=>{ 
+    if(e.target.closest('#mini-btn-prev, #mini-btn-play, #mini-btn-next')) return;
+    if(state.playingTrack) setPlayerExpanded(!state.playerExpanded); 
+  });
   $('player-close-btn').addEventListener('click',()=>setPlayerExpanded(false));
 
   // ── Favourite from player ──────────────────
@@ -635,62 +795,6 @@
   });
 
   // ── Media Session API (lock screen controls) ─
-  function makeArtwork(title, stage) {
-    try {
-      const size = 512;
-      const canvas = document.createElement('canvas');
-      canvas.width = size; canvas.height = size;
-      const ctx = canvas.getContext('2d');
-
-      // Pink background
-      ctx.fillStyle = '#FF91AF';
-      ctx.fillRect(0, 0, size, size);
-
-      // Black border
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 10;
-      ctx.strokeRect(18, 18, size - 36, size - 36);
-
-      // Stage badge (top-left)
-      if (stage) {
-        const badge = (TAG_FULL[stage] || stage).toUpperCase();
-        ctx.font = 'bold 26px monospace';
-        const bw = ctx.measureText(badge).width + 28;
-        ctx.fillStyle = '#000';
-        ctx.fillRect(36, 36, bw, 44);
-        ctx.fillStyle = '#FF91AF';
-        ctx.textBaseline = 'middle';
-        ctx.textAlign = 'left';
-        ctx.fillText(badge, 50, 58);
-      }
-
-      // MILLO label
-      ctx.fillStyle = '#000';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
-      ctx.font = 'bold 52px monospace';
-      ctx.fillText('MILLO', size / 2, 190);
-
-      // Divider
-      ctx.fillRect(40, 210, size - 80, 4);
-
-      // Track title — word-wrapped
-      ctx.font = 'bold 38px monospace';
-      const words = title.toUpperCase().split(' ');
-      let line = '', y = 292, maxW = size - 80;
-      for (let i = 0; i < words.length; i++) {
-        const test = line + (line ? ' ' : '') + words[i];
-        if (ctx.measureText(test).width > maxW && line) {
-          ctx.fillText(line, size / 2, y);
-          line = words[i]; y += 50;
-        } else { line = test; }
-      }
-      if (line) ctx.fillText(line, size / 2, y);
-
-      return canvas.toDataURL('image/png');
-    } catch { return null; }
-  }
-
   function setupMediaSession() {
     if (!('mediaSession' in navigator)) return;
     navigator.mediaSession.setActionHandler('play',          () => audio.play().catch(()=>{}));
@@ -703,12 +807,12 @@
 
   function updateMediaSession(track) {
     if (!('mediaSession' in navigator) || !track) return;
-    const artwork = makeArtwork(track.title, track.stage);
+    const lockscreenArt = track.artDataUrl || '';
     navigator.mediaSession.metadata = new MediaMetadata({
       title:  track.title,
       artist: 'MILLO',
       album:  TAG_FULL[track.stage] || 'ARCHIVE',
-      artwork: artwork ? [{ src: artwork, sizes: '512x512', type: 'image/png' }] : [],
+      artwork: lockscreenArt ? [{ src: lockscreenArt, sizes: '64x64', type: 'image/png' }] : [],
     });
   }
 

@@ -120,7 +120,7 @@
       <button class="player-close-btn" id="player-close-btn" aria-label="Close player">✕</button>
     </div>
 
-    <!-- ── EXPANDED CONTENT (between handle and mini strip) ── -->
+    <!-- ── EXPANDED CONTENT ── -->
     <div class="player-full" id="player-full">
 
       <!-- Top panel: tabs for NOTES / VERSIONS -->
@@ -141,6 +141,11 @@
           <div class="player-versions-list" id="player-versions"></div>
           <div class="no-versions-msg" id="no-versions-msg">No other versions.</div>
         </div>
+      </div>
+
+      <!-- Large Pixel Art Canvas Container -->
+      <div class="player-art-panel" id="player-art-panel" style="display: none; justify-content: center; align-items: center; padding: 12px 0 4px; flex-shrink: 0;">
+        <canvas id="player-art-canvas" width="128" height="128" style="image-rendering: pixelated; border: 2px solid var(--black); box-shadow: var(--shadow); background: var(--pink);"></canvas>
       </div>
 
       <!-- Track info -->
@@ -214,15 +219,18 @@
 
     </div><!-- end .player-full -->
 
-    <!-- ── MINI STRIP — always visible at bottom ── -->
+    <!-- ── MINI STRIP ── -->
     <div class="player-mini">
       <div class="player-mini-prog">
         <div class="player-mini-prog-fill" id="player-mini-fill"></div>
       </div>
       <div class="player-mini-row">
         <div class="player-mini-info" id="player-expand-btn">
-          <span class="player-title" id="player-title">— SELECT A TRACK —</span>
-          <span class="player-stage" id="player-stage"></span>
+          <canvas id="mini-art-canvas" width="36" height="36" style="display: none; image-rendering: pixelated; border: 1px solid var(--black); background: var(--pink); flex-shrink: 0;"></canvas>
+          <div class="player-mini-text-block">
+            <span class="player-title" id="player-title">— SELECT A TRACK —</span>
+            <span class="player-stage" id="player-stage"></span>
+          </div>
         </div>
         <div class="player-mini-controls">
           <button class="mini-ctrl" id="mini-btn-prev" aria-label="Previous">
