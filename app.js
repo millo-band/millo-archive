@@ -25,7 +25,6 @@
   function toggleFavorite(key) { const f=getFavorites(); f.has(key)?f.delete(key):f.add(key); saveFavorites(f); return f.has(key); }
 
   // ── Playlists ───────────────────────────────
-  // Data: { [id]: { name: string, tracks: [{songKey, filename}] } }
   function getPlaylists()    { try { return JSON.parse(localStorage.getItem(PLAYLISTS_KEY)||'{}'); } catch { return {}; } }
   function savePlaylists(d)  { localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(d)); }
 
@@ -92,13 +91,13 @@
     shuffleQueue:[], currentFilter:'all', currentSort:'newest',
     isShuffling:false, playingTrack:null, playingGroup:null,
     isPlaying:false, scrubbing:false,
-    playerExpanded:false, looping:false,
+    playerExpanded:false, looping:false, activeTab:'notes',
     editMode:false, selectedFilenames:new Set(),
     searchQuery:'',
     songPageGroup:null,
-    activePlaylistId:null,   // which playlist is queued up
-    playlistQueue:[],        // ordered track objects for active playlist
-    openPlaylistId:null,     // which playlist detail page is open
+    activePlaylistId:null,
+    playlistQueue:[],
+    openPlaylistId:null,
   };
 
   const $ = id=>document.getElementById(id);
@@ -118,8 +117,7 @@
     playerTitleLg:$('player-title-lg'), playerStageLg:$('player-stage-lg'),
     playerFilenameLg:$('player-filename-lg'), playerFavBtn:$('player-fav-btn'),
     playerVersionsList:$('player-versions'), noVersionsMsg:$('no-versions-msg'),
-    playerArt:$('player-art'), playerArtIdle:$('player-art-idle'),
-    versionsHeading:$('versions-heading'),
+    tabBtnVersions:$('tab-btn-versions'),
     progressTrack:$('player-progress-track'),
     progressFill:$('player-progress-fill'), progressThumb:$('player-progress-thumb'),
     playerTime:$('player-time'), playerDur:$('player-dur'),
@@ -143,6 +141,7 @@
     playlistDetailPage:$('playlist-detail-page'),
     playlistDetailTitle:$('playlist-detail-title'), playlistDetailBody:$('playlist-detail-body'),
     playlistStatsBar:$('playlist-stats-bar'),
+    playerBackdrop:$('player-backdrop'),
   };
 
   // ── Dropdowns ──────────────────────────────
@@ -172,7 +171,7 @@
       el.sortToggle.classList.toggle('active',s!=='newest');
       closeAllDropdowns();
       if(s==='shuffle'){activateShuffle();return;}
-      state.currentSort=s; state.isShuffling=false; $('shuffle-radio-btn').classList.remove('playing'); render();
+      state.currentSort=s;state.isShuffling=false;$('shuffle-radio-btn').classList.remove('playing');render();
     });
   });
 
@@ -188,7 +187,15 @@
   el.searchInput.addEventListener('input',()=>{state.searchQuery=el.searchInput.value.trim().toLowerCase();render();});
   el.searchClear.addEventListener('click',()=>{el.searchInput.value='';state.searchQuery='';el.searchInput.focus();render();});
 
-  // (tab system removed — notes + versions are always visible, stacked on mobile, side-by-side on desktop)
+  // ── Player tabs ────────────────────────────
+  document.querySelectorAll('.ptab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const tab=btn.dataset.tab;
+      state.activeTab=tab;
+      document.querySelectorAll('.ptab').forEach(b=>b.classList.toggle('active',b===btn));
+      document.querySelectorAll('.ptab-panel').forEach(p=>p.classList.toggle('active',p.id===`tab-${tab}`));
+    });
+  });
 
   // ── Build groups ───────────────────────────
   function buildGroups(tracks){
@@ -330,7 +337,6 @@
     const sorted=[...group.tracks].sort((a,b)=>(b.uploaded||'')>(a.uploaded||'')?1:-1);
     const latest=sorted[0];
 
-    // ── Latest Version Hero ──
     const heroSec=document.createElement('div');heroSec.className='sp-section';
     const heroLbl=document.createElement('div');heroLbl.className='sp-section-label';heroLbl.textContent='LATEST VERSION';
     heroSec.appendChild(heroLbl);
@@ -358,7 +364,6 @@
     heroSec.appendChild(hero);
     el.songPageBody.appendChild(heroSec);
 
-    // ── All Versions ──
     const versSec=document.createElement('div');versSec.className='sp-section';
     const versLbl=document.createElement('div');versLbl.className='sp-section-label';
     versLbl.textContent=`ALL VERSIONS — ${sorted.length}`;versSec.appendChild(versLbl);
@@ -388,7 +393,6 @@
     });
     el.songPageBody.appendChild(versSec);
 
-    // ── Playlists section ──
     renderSongPagePlaylists(group);
   }
 
@@ -397,12 +401,11 @@
     if(existing)existing.remove();
 
     const sec=document.createElement('div');sec.className='sp-section sp-playlists-section';
-    const lbl=document.createElement('div');lbl.className='sp-section-label';lbl.textContent='ADD TO PLAYLIST';sec.appendChild(lbl);
+    const lbl=document.createElement('div');lbl.className='sp-section-label';lbl.textContent='ADD TO LIST';sec.appendChild(lbl);
 
     const chips=document.createElement('div');chips.className='sp-folder-chips';
     const playlists=getPlaylists();
     const songKey=group.title.toLowerCase();
-    // Latest version as default
     const latestTrack=[...group.tracks].sort((a,b)=>(b.uploaded||'')>(a.uploaded||'')?1:-1)[0];
 
     Object.entries(playlists).forEach(([id,pl])=>{
@@ -412,13 +415,10 @@
       chip.textContent=pl.name.toUpperCase();
       chip.addEventListener('click',()=>{
         if(isSongInPlaylist(id,songKey)){
-          removeSongFromPlaylist(id,songKey);
-          chip.classList.remove('active');
+          removeSongFromPlaylist(id,songKey);chip.classList.remove('active');
         } else {
-          addSongToPlaylist(id,songKey,latestTrack.filename);
-          chip.classList.add('active');
+          addSongToPlaylist(id,songKey,latestTrack.filename);chip.classList.add('active');
         }
-        // refresh detail page if it's open for this playlist
         if(state.openPlaylistId===id)renderPlaylistDetailPage(id);
       });
       chips.appendChild(chip);
@@ -426,9 +426,9 @@
 
     const newBtn=document.createElement('button');
     newBtn.className='sp-folder-chip sp-folder-new';
-    newBtn.textContent='+ NEW PLAYLIST';
+    newBtn.textContent='+ NEW LIST';
     newBtn.addEventListener('click',()=>{
-      const name=prompt('Playlist name:');
+      const name=prompt('List name:');
       if(!name||!name.trim())return;
       const id=createPlaylist(name.trim());
       addSongToPlaylist(id,songKey,latestTrack.filename);
@@ -437,16 +437,16 @@
     chips.appendChild(newBtn);
     sec.appendChild(chips);
 
-    if(!Object.keys(playlists).length&&sec.querySelector('.sp-folder-new')){
+    if(!Object.keys(playlists).length){
       const hint=document.createElement('div');hint.className='sp-playlist-hint';
-      hint.textContent='CREATE A PLAYLIST TO BUILD AN ALBUM OR SEQUENCE.';
+      hint.textContent='CREATE A LIST TO BUILD AN ALBUM OR SEQUENCE.';
       sec.appendChild(hint);
     }
 
     el.songPageBody.appendChild(sec);
   }
 
-  // ── Playlists List Page ──────────────────────
+  // ── Lists Page (album-style) ─────────────────
   function openPlaylistsPage(){
     renderPlaylistsPage();
     el.playlistsPage.style.display='flex';
@@ -456,6 +456,7 @@
     el.playlistsPage.style.display='none';
     document.body.classList.remove('overlay-open');
   }
+
   function renderPlaylistsPage(){
     el.playlistsBody.innerHTML='';
     const playlists=getPlaylists();
@@ -463,21 +464,29 @@
 
     if(!entries.length){
       const empty=document.createElement('div');empty.className='sp-empty';
-      empty.innerHTML='NO PLAYLISTS YET.<br><br>OPEN ANY SONG PAGE AND<br>TAP "+ NEW PLAYLIST".';
+      empty.innerHTML='NO LISTS YET.<br><br>OPEN ANY SONG AND<br>TAP "+ NEW LIST".';
       el.playlistsBody.appendChild(empty);return;
     }
 
-    const grid=document.createElement('div');grid.className='folder-grid';
+    const grid=document.createElement('div');grid.className='album-grid';
     entries.forEach(([id,pl])=>{
-      const card=document.createElement('div');card.className='folder-card';
+      const card=document.createElement('div');card.className='album-card';
 
-      const icon=document.createElement('div');icon.className='folder-card-icon';
-      icon.innerHTML=`<svg width="26" height="20" viewBox="0 0 26 20" fill="none"><line x1="0" y1="2" x2="16" y2="2" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><line x1="0" y1="8" x2="16" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><line x1="0" y1="14" x2="11" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><polygon points="19,6 26,10 19,14" fill="currentColor"/></svg>`;
+      // Canvas album art (pixel art seeded from playlist name)
+      const canvasId=`album-art-${id}`;
+      const canvas=document.createElement('canvas');
+      canvas.id=canvasId; canvas.className='album-art-canvas';
+      canvas.width=64; canvas.height=64;
+      card.appendChild(canvas);
 
-      const name=document.createElement('div');name.className='folder-card-name';name.textContent=pl.name.toUpperCase();
-      const count=document.createElement('div');count.className='folder-card-count';count.textContent=`${pl.tracks.length} SONG${pl.tracks.length!==1?'S':''}`;
+      const info=document.createElement('div');info.className='album-card-info';
+      const name=document.createElement('div');name.className='album-card-name';name.textContent=pl.name.toUpperCase();
+      const count=document.createElement('div');count.className='album-card-count';
+      count.textContent=`${pl.tracks.length} TRACK${pl.tracks.length!==1?'S':''}`;
+      info.appendChild(name);info.appendChild(count);
+      card.appendChild(info);
 
-      const del=document.createElement('button');del.className='folder-card-del';del.textContent='✕';
+      const del=document.createElement('button');del.className='album-card-del';del.textContent='✕';
       del.addEventListener('click',e=>{
         e.stopPropagation();
         if(!confirm(`Delete "${pl.name}"?`))return;
@@ -485,10 +494,12 @@
         if(state.activePlaylistId===id){state.activePlaylistId=null;state.playlistQueue=[];updatePlayerPlaylistBadge();}
         renderPlaylistsPage();
       });
+      card.appendChild(del);
 
-      card.appendChild(icon);card.appendChild(name);card.appendChild(count);card.appendChild(del);
-      card.addEventListener('click',()=>{openPlaylistDetailPage(id);});
+      card.addEventListener('click',()=>openPlaylistDetailPage(id));
       grid.appendChild(card);
+      // Generate art after appended to DOM
+      generatePixelArt(canvasId, pl.name);
     });
     el.playlistsBody.appendChild(grid);
   }
@@ -498,7 +509,6 @@
     state.openPlaylistId=id;
     renderPlaylistDetailPage(id);
     el.playlistDetailPage.style.display='flex';
-    // Keep playlists page open behind it — we'll hide it
     el.playlistsPage.style.display='none';
     document.body.classList.add('overlay-open');
   }
@@ -523,16 +533,14 @@
     el.playlistDetailTitle.textContent=pl.name.toUpperCase();
     el.playlistDetailBody.innerHTML='';
 
-    // Stats bar
     const statsBar=$('playlist-stats-bar');
     const statsCount=$('playlist-stats-count');
     const statsDur=$('playlist-stats-dur');
     if(statsBar){
       if(pl.tracks.length){
         statsBar.style.display='flex';
-        statsCount.textContent=`${pl.tracks.length} SONG${pl.tracks.length!==1?'S':''}`;
+        statsCount.textContent=`${pl.tracks.length} TRACK${pl.tracks.length!==1?'S':''}`;
         statsDur.textContent='...';
-        // Sum durations async
         const trackObjs=pl.tracks.map(pt=>state.allTracks.find(t=>t.filename===pt.filename)).filter(Boolean);
         let total=0,loaded=0;
         if(!trackObjs.length){statsDur.textContent='—';}
@@ -555,7 +563,7 @@
 
     if(!pl.tracks.length){
       const empty=document.createElement('div');empty.className='sp-empty';
-      empty.innerHTML='NO SONGS YET.<br><br>OPEN ANY SONG PAGE AND<br>ADD IT TO THIS PLAYLIST.';
+      empty.innerHTML='NO SONGS YET.<br><br>OPEN ANY SONG PAGE AND<br>ADD IT TO THIS LIST.';
       el.playlistDetailBody.appendChild(empty);return;
     }
 
@@ -563,7 +571,6 @@
       const group=state.groups.find(g=>g.title.toLowerCase()===pt.songKey);
       if(!group)return;
 
-      // Resolve the pinned track object (fall back to latest if filename no longer found)
       const resolvedTrack=state.allTracks.find(t=>t.filename===pt.filename)
         ||[...group.tracks].sort((a,b)=>(b.uploaded||'')>(a.uploaded||'')?1:-1)[0];
 
@@ -574,33 +581,25 @@
       row.dataset.songKey=pt.songKey;
       row.dataset.idx=idx;
 
-      // Number / playing indicator
       const num=document.createElement('div');num.className='pl-track-num';
-      if(isPlaying){
-        num.innerHTML=`<span class="pl-playing-dot"></span>`;
-      } else {
-        num.textContent=String(idx+1).padStart(2,'0');
-      }
+      if(isPlaying){num.innerHTML=`<span class="pl-playing-dot"></span>`;}
+      else{num.textContent=String(idx+1).padStart(2,'0');}
       row.appendChild(num);
 
-      // Drag handle
       const handle=document.createElement('div');handle.className='pl-drag-handle';
       handle.innerHTML=`<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><line x1="2" y1="4" x2="12" y2="4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/><line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/><line x1="2" y1="10" x2="12" y2="10" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/></svg>`;
       row.appendChild(handle);
 
-      // Song info
       const info=document.createElement('div');info.className='pl-track-info';
       const titleEl=document.createElement('div');titleEl.className='pl-track-title';titleEl.textContent=group.title;
       info.appendChild(titleEl);
 
-      // Version picker trigger
       const verWrap=document.createElement('div');verWrap.className='pl-ver-wrap';
       const stageLabel=TAG_LABEL[resolvedTrack.stage]||'?';
       const verLabel=resolvedTrack.version?`v${resolvedTrack.version}`:'';
       const trigger=document.createElement('button');trigger.className='pl-ver-trigger';
       trigger.textContent=[stageLabel,verLabel].filter(Boolean).join(' · ');
 
-      // Version options dropdown
       const opts=document.createElement('div');opts.className='pl-ver-opts';
       const sortedVers=[...group.tracks].sort((a,b)=>(b.uploaded||'')>(a.uploaded||'')?1:-1);
       sortedVers.forEach((t,vi)=>{
@@ -615,7 +614,6 @@
         opt.addEventListener('click',e=>{
           e.stopPropagation();
           setTrackVersion(id,pt.songKey,t.filename);
-          // If this playlist is active and this song is playing, update now
           if(state.activePlaylistId===id){
             const pIdx=state.playlistQueue.findIndex(q=>q._idx===resolvedTrack._idx);
             if(pIdx>=0)state.playlistQueue[pIdx]=t;
@@ -636,13 +634,11 @@
       info.appendChild(verWrap);
       row.appendChild(info);
 
-      // Play this track button
       const playBtn=document.createElement('button');playBtn.className='pl-track-play';
       playBtn.innerHTML=`<svg width="11" height="11" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>`;
       playBtn.addEventListener('click',e=>{e.stopPropagation();playFromPlaylist(id,resolvedTrack.filename);});
       row.appendChild(playBtn);
 
-      // Remove button
       const rmBtn=document.createElement('button');rmBtn.className='pl-track-remove';rmBtn.textContent='✕';
       rmBtn.addEventListener('click',e=>{
         e.stopPropagation();
@@ -651,140 +647,110 @@
       });
       row.appendChild(rmBtn);
 
-      // Tap row = play
       row.addEventListener('click',()=>playFromPlaylist(id,resolvedTrack.filename));
-
       el.playlistDetailBody.appendChild(row);
     });
 
-    // "Add songs" hint at bottom
     const hint=document.createElement('div');hint.className='pl-add-hint';
-    hint.textContent='TO ADD SONGS — OPEN A SONG PAGE AND TAP THIS PLAYLIST\'S NAME.';
+    hint.textContent='TO ADD SONGS — OPEN A SONG PAGE AND TAP THIS LIST\'S NAME.';
     el.playlistDetailBody.appendChild(hint);
 
-    // Setup drag-and-drop
     setupPlaylistDragDrop(el.playlistDetailBody, id);
-
-    // Update embedded player state
     updateEmbeddedPlayer();
   }
 
   // ── Drag and Drop ────────────────────────────
   function setupPlaylistDragDrop(container, playlistId) {
-    const rows = [...container.querySelectorAll('.pl-track-row[data-idx]')];
-    if (!rows.length) return;
+    const rows=[...container.querySelectorAll('.pl-track-row[data-idx]')];
+    if(!rows.length)return;
 
-    // ── HTML5 drag (desktop) ──
-    rows.forEach(row => {
-      row.setAttribute('draggable', 'true');
-      const handle = row.querySelector('.pl-drag-handle');
-      // Only allow drag start from handle on desktop
-      row.addEventListener('dragstart', e => {
-        if (e.target.closest && !e.target.closest('.pl-drag-handle') && e.type==='dragstart') {
-          // Allow any drag on desktop for simplicity
-        }
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', row.dataset.idx);
-        setTimeout(()=>row.classList.add('pl-dragging'), 0);
+    rows.forEach(row=>{
+      row.setAttribute('draggable','true');
+      row.addEventListener('dragstart',e=>{
+        e.dataTransfer.effectAllowed='move';
+        e.dataTransfer.setData('text/plain',row.dataset.idx);
+        setTimeout(()=>row.classList.add('pl-dragging'),0);
       });
-      row.addEventListener('dragend', ()=>{
+      row.addEventListener('dragend',()=>{
         row.classList.remove('pl-dragging');
         rows.forEach(r=>r.classList.remove('pl-drop-above','pl-drop-below'));
       });
-      row.addEventListener('dragover', e=>{
+      row.addEventListener('dragover',e=>{
         e.preventDefault();
-        const fromIdx = parseInt(e.dataTransfer.getData('text/plain')||'-1');
-        if (fromIdx<0) return;
-        const toIdx = parseInt(row.dataset.idx);
+        const fromIdx=parseInt(e.dataTransfer.getData('text/plain')||'-1');
+        if(fromIdx<0)return;
+        const toIdx=parseInt(row.dataset.idx);
         rows.forEach(r=>r.classList.remove('pl-drop-above','pl-drop-below'));
-        if (fromIdx !== toIdx)
-          row.classList.add(fromIdx < toIdx ? 'pl-drop-below' : 'pl-drop-above');
+        if(fromIdx!==toIdx)row.classList.add(fromIdx<toIdx?'pl-drop-below':'pl-drop-above');
       });
-      row.addEventListener('dragleave', e=>{
-        if (!row.contains(e.relatedTarget))
-          row.classList.remove('pl-drop-above','pl-drop-below');
+      row.addEventListener('dragleave',e=>{
+        if(!row.contains(e.relatedTarget))row.classList.remove('pl-drop-above','pl-drop-below');
       });
-      row.addEventListener('drop', e=>{
+      row.addEventListener('drop',e=>{
         e.preventDefault();
-        const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
-        const toIdx = parseInt(row.dataset.idx);
+        const fromIdx=parseInt(e.dataTransfer.getData('text/plain'));
+        const toIdx=parseInt(row.dataset.idx);
         rows.forEach(r=>r.classList.remove('pl-drop-above','pl-drop-below'));
-        if (!isNaN(fromIdx) && fromIdx !== toIdx) {
-          reorderPlaylistTrack(playlistId, fromIdx, toIdx);
+        if(!isNaN(fromIdx)&&fromIdx!==toIdx){
+          reorderPlaylistTrack(playlistId,fromIdx,toIdx);
           renderPlaylistDetailPage(playlistId);
         }
       });
     });
 
-    // ── Touch drag (mobile) ──
-    let touch = { active:false, startIdx:-1, startY:0, curY:0, el:null, rowH:60 };
-
+    let touch={active:false,startIdx:-1,startY:0,curY:0,el:null,rowH:60};
     rows.forEach(row=>{
-      const handle = row.querySelector('.pl-drag-handle');
-      if (!handle) return;
-      handle.addEventListener('touchstart', e=>{
+      const handle=row.querySelector('.pl-drag-handle');
+      if(!handle)return;
+      handle.addEventListener('touchstart',e=>{
         e.stopPropagation();
         const t=e.touches[0];
-        touch = { active:true, startIdx:parseInt(row.dataset.idx), startY:t.clientY, curY:t.clientY, el:row, rowH:row.offsetHeight||60 };
+        touch={active:true,startIdx:parseInt(row.dataset.idx),startY:t.clientY,curY:t.clientY,el:row,rowH:row.offsetHeight||60};
         row.classList.add('pl-dragging');
       },{passive:true});
     });
-
-    container.addEventListener('touchmove', e=>{
-      if (!touch.active) return;
-      touch.curY = e.touches[0].clientY;
-      const dy = touch.curY - touch.startY;
-      touch.el.style.transform = `translateY(${dy}px)`;
-      touch.el.style.zIndex = '20';
-      const newIdx = Math.max(0, Math.min(rows.length-1, touch.startIdx + Math.round(dy/touch.rowH)));
+    container.addEventListener('touchmove',e=>{
+      if(!touch.active)return;
+      touch.curY=e.touches[0].clientY;
+      const dy=touch.curY-touch.startY;
+      touch.el.style.transform=`translateY(${dy}px)`;touch.el.style.zIndex='20';
+      const newIdx=Math.max(0,Math.min(rows.length-1,touch.startIdx+Math.round(dy/touch.rowH)));
       rows.forEach(r=>r.classList.remove('pl-drop-above','pl-drop-below'));
-      if (newIdx !== touch.startIdx) {
-        const target = rows.find(r=>parseInt(r.dataset.idx)===newIdx);
-        if (target) target.classList.add(newIdx>touch.startIdx?'pl-drop-below':'pl-drop-above');
-      }
+      if(newIdx!==touch.startIdx){const target=rows.find(r=>parseInt(r.dataset.idx)===newIdx);if(target)target.classList.add(newIdx>touch.startIdx?'pl-drop-below':'pl-drop-above');}
       e.preventDefault();
     },{passive:false});
-
-    container.addEventListener('touchend', ()=>{
-      if (!touch.active) return;
-      const dy = touch.curY - touch.startY;
-      const newIdx = Math.max(0, Math.min(rows.length-1, touch.startIdx + Math.round(dy/touch.rowH)));
-      touch.el.style.transform = '';
-      touch.el.style.zIndex = '';
-      touch.el.classList.remove('pl-dragging');
+    container.addEventListener('touchend',()=>{
+      if(!touch.active)return;
+      const dy=touch.curY-touch.startY;
+      const newIdx=Math.max(0,Math.min(rows.length-1,touch.startIdx+Math.round(dy/touch.rowH)));
+      touch.el.style.transform='';touch.el.style.zIndex='';touch.el.classList.remove('pl-dragging');
       rows.forEach(r=>r.classList.remove('pl-drop-above','pl-drop-below'));
-      touch.active = false;
-      if (newIdx !== touch.startIdx) {
-        reorderPlaylistTrack(playlistId, touch.startIdx, newIdx);
-        renderPlaylistDetailPage(playlistId);
-      }
+      touch.active=false;
+      if(newIdx!==touch.startIdx){reorderPlaylistTrack(playlistId,touch.startIdx,newIdx);renderPlaylistDetailPage(playlistId);}
     });
   }
 
   // ── Embedded mini player (in playlist overlay) ──
-  function updateEmbeddedPlayer() {
+  function updateEmbeddedPlayer(){
     const titleEl=$('pl-mini-title');
     const stageEl=$('pl-mini-stage');
     const fillEl=$('pl-mini-fill');
     const playIcon=$('pl-mini-icon-play');
     const pauseIcon=$('pl-mini-icon-pause');
-    if (!titleEl) return;
-    if (state.playingTrack) {
-      titleEl.textContent = state.playingTrack.title;
-      stageEl.textContent = TAG_LABEL[state.playingTrack.stage]||'';
-      stageEl.style.display = TAG_LABEL[state.playingTrack.stage]?'inline-block':'none';
+    if(!titleEl)return;
+    if(state.playingTrack){
+      titleEl.textContent=state.playingTrack.title;
+      stageEl.textContent=TAG_LABEL[state.playingTrack.stage]||'';
+      stageEl.style.display=TAG_LABEL[state.playingTrack.stage]?'inline-block':'none';
     } else {
-      titleEl.textContent = '— NOTHING PLAYING —';
-      stageEl.textContent = '';
-      stageEl.style.display = 'none';
+      titleEl.textContent='— NOTHING PLAYING —';
+      stageEl.textContent='';stageEl.style.display='none';
     }
-    if (playIcon && pauseIcon) {
-      playIcon.style.display = state.isPlaying ? 'none' : 'block';
-      pauseIcon.style.display = state.isPlaying ? 'block' : 'none';
+    if(playIcon&&pauseIcon){
+      playIcon.style.display=state.isPlaying?'none':'block';
+      pauseIcon.style.display=state.isPlaying?'block':'none';
     }
-    if (fillEl && audio.duration) {
-      fillEl.style.width = `${(audio.currentTime/audio.duration)*100}%`;
-    }
+    if(fillEl&&audio.duration)fillEl.style.width=`${(audio.currentTime/audio.duration)*100}%`;
   }
 
   // ── Playlist Playback ────────────────────────
@@ -793,7 +759,6 @@
     const pl=playlists[playlistId];
     if(!pl||!pl.tracks.length)return;
 
-    // Build ordered track array
     const queue=pl.tracks
       .map(pt=>state.allTracks.find(t=>t.filename===pt.filename)||
                [...(state.groups.find(g=>g.title.toLowerCase()===pt.songKey)?.tracks||[])].sort((a,b)=>(b.uploaded||'')>(a.uploaded||'')?1:-1)[0])
@@ -891,6 +856,92 @@
     });
   }
 
+  // ── 50-Algorithm Procedural 1-Bit Art Generator ──────────────────
+  function generatePixelArt(canvasId, seedString) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    const ctx = canvas.getContext('2d');
+    const size = 64;
+    canvas.width = size;
+    canvas.height = size;
+
+    ctx.fillStyle = '#FF91AF';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#000000';
+
+    let hash = 0;
+    for (let i = 0; i < seedString.length; i++) hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
+    function random() { const x = Math.sin(hash++) * 10000; return x - Math.floor(x); }
+
+    const artType = Math.floor(random() * 50);
+
+    for (let x = 0; x < size; x++) {
+      for (let y = 0; y < size; y++) {
+        let nx=(x-32)/32, ny=(y-32)/32;
+        let ax=Math.abs(nx), ay=Math.abs(ny);
+        let r=Math.sqrt(nx*nx+ny*ny), a=Math.atan2(ny,nx);
+        let draw=false;
+
+        switch (artType) {
+          case 0:  draw = nx*nx*2+ny*ny*8<1&&r>0.15; break;
+          case 1:  draw = ny>ax-0.2+Math.sin(nx*15)*0.1; break;
+          case 2:  draw = (ax<0.1&&ny>0)||(nx*nx+(ny+0.3)**2<0.3); break;
+          case 3:  draw = (x%16<14)&&(y%16<14); break;
+          case 4:  draw = (nx+0.5)**2+ny**2<0.1||(nx-0.5)**2+ny**2<0.1||(ny>-0.1&&ny<0&&ax<0.5); break;
+          case 5:  draw = Math.abs(Math.sin(ny*10)-nx)<0.1||Math.abs(Math.sin(ny*10+3.14)-nx)<0.1||(y%8<2&&ax<0.8); break;
+          case 6:  draw = ax<0.4&&ny>-0.6&&!(nx>0.2&&nx<0.3&&ay<0.05); break;
+          case 7:  draw = ((nx+0.3)**2+(ny+0.3)**2<0.1)||(random()<0.05)||(ny>0.6&&Math.sin(nx*10)>0); break;
+          case 8:  draw = ny>0.1&&(x%12<10)&&(y%8<6)&&random()<0.8; break;
+          case 9:  draw = r<0.7&&!(ny<0&&Math.abs(ax-0.3)<0.1)&&!(ny>0.3&&ax<0.2); break;
+          case 10: draw = ny>Math.sin(nx*10)*0.3; break;
+          case 11: draw = Math.sin(nx*20)*Math.sin(ny*20)>0; break;
+          case 12: draw = ny>ax&&(y%6<4); break;
+          case 13: draw = ax<0.05&&ny>-0.8&&ny<0.6||(ax<0.3&&Math.abs(ny-0.5)<0.05); break;
+          case 14: draw = ny<0.5-nx*nx&&ny>-0.6&&ax<0.6&&r>0.2; break;
+          case 15: draw = r<0.5+0.2*Math.sin(a*5)&&r>0.1; break;
+          case 16: draw = r<0.3||Math.sin(a*12)>0.8; break;
+          case 17: draw = r<0.5&&(nx-0.2)**2+(ny-0.2)**2>0.4; break;
+          case 18: draw = r<0.3||(nx-0.3)**2+(ny+0.1)**2<0.2||(nx+0.3)**2+(ny+0.2)**2<0.2; break;
+          case 19: draw = Math.abs(nx-Math.sin(ny*15)*0.1-ny*0.2)<0.05; break;
+          case 20: draw = (nx*nx+ny*ny-0.3)**3-nx*nx*ny*ny*ny<0; break;
+          case 21: draw = (x+y)%10<2&&random()<0.5; break;
+          case 22: draw = (r%0.2<0.05)||(Math.abs(Math.sin(a*4))<0.1); break;
+          case 23: draw = Math.sin(r*30)>0; break;
+          case 24: draw = Math.sin(r*30-a*3)>0; break;
+          case 25: draw = (x%4===0||y%4===0)&&random()>0.2; break;
+          case 26: draw = ny>0&&(Math.sin(nx/ny*10)>0||Math.sin(1/ny*5)>0); break;
+          case 27: draw = ny>0&&y%4<3&&nx*10-Math.floor(nx*10)<0.8&&random()>0.3; break;
+          case 28: draw = ax<0.6&&ay<0.4&&!(ay<0.1&&Math.abs(ax-0.3)<0.1); break;
+          case 29: draw = r<0.7&&r>0.1&&Math.sin(r*40)>-0.5; break;
+          case 30: draw = (nx*nx+ny*ny*16<0.2)||(nx*nx*2+(ny+0.2)**2*2<0.1); break;
+          case 31: draw = nx+ny>0&&(x%8<7)&&(y%8<7); break;
+          case 32: draw = ax<ay+0.1&&ay<0.7; break;
+          case 33: draw = ax<0.6&&Math.abs(ny-Math.sin(nx*5)*0.2)<0.3; break;
+          case 34: draw = ax<0.5&&ay<0.5&&ax>0.05&&ay>0.05; break;
+          case 35: draw = ax+ay<0.6&&r>0.1; break;
+          case 36: draw = ax<0.6&&ay<0.4&&(Math.abs(nx-ny)<0.05||Math.abs(nx+ny)<0.05); break;
+          case 37: draw = ax<0.6&&ay<0.4&&ax>0.05; break;
+          case 38: draw = (ax<0.3&&ny>-0.4&&ny<0.4)||(nx>0.3&&nx<0.5&&ay<0.2&&Math.abs(nx-0.4)>0.05); break;
+          case 39: draw = ((nx-0.4)**2+ny**2<0.05)||((nx+0.4)**2+ny**2<0.05)||(ay<0.02&&ax<0.4); break;
+          case 40: draw = ay<ax&&ax<0.6; break;
+          case 41: draw = r<0.6&&Math.cos(a*5)>0.5; break;
+          case 42: draw = r<0.3||(Math.abs(ny-nx*0.5)<0.05&&ax<0.6); break;
+          case 43: draw = ay<0.4&&Math.sin(nx*Math.sin(nx*50)*50)>0; break;
+          case 44: draw = (ax<0.4&&ay<0.6)&&!(ax<0.3&&ay<0.5&&ny<0)||(ax<0.1&&ny<-0.6&&ny>-0.7); break;
+          case 45: draw = ax<0.5&&ay<0.5&&!(nx>0.1&&nx<0.4&&ny<-0.2); break;
+          case 46: draw = ax<0.5&&ny>0&&ny<0.5-Math.abs(Math.sin(nx*10)*0.2); break;
+          case 47: draw = ax<0.05&&ay<0.5||(r>0.4&&r<0.5&&ny>0)||(ay<0.05&&ax<0.3); break;
+          case 48: draw = ax<0.4&&ay<0.4&&r>0.1; break;
+          case 49: draw = (nx*nx+ny*ny*2<0.3)&&!(Math.abs(ax-0.2)<0.1&&ny<0.1&&ny>-0.1); break;
+        }
+
+        if (draw) ctx.fillRect(x, y, 1, 1);
+        else if (random() < 0.03) ctx.fillRect(x, y, 1, 1);
+      }
+    }
+    return canvas.toDataURL('image/png');
+  }
+
   // ── Player bar update ──────────────────────
   function updatePlayerBar(track,group){
     if(!track){
@@ -903,7 +954,7 @@
       el.downloadBtn.style.display='none';
       el.playerNote.value='';el.playerNote.disabled=true;
       el.playerVersionsList.innerHTML='';
-      if(el.versionsHeading)el.versionsHeading.style.display='none';
+      if(el.tabBtnVersions)el.tabBtnVersions.style.display='none';
       updatePlayerArtwork(null);
       updateTagEditorState(null);return;
     }
@@ -922,12 +973,15 @@
     el.playerNote.disabled=false;
     el.playerNote.value=notes[track.filename]||'';
     el.noteStatus.textContent='';
+
     // Artwork
     updatePlayerArtwork(track);
-    // Versions
+
+    // Versions tab
     el.playerVersionsList.innerHTML='';
     const hasVersions=group&&group.tracks.length>1;
-    if(el.versionsHeading)el.versionsHeading.style.display=hasVersions?'':'none';
+    if(el.tabBtnVersions)el.tabBtnVersions.style.display=hasVersions?'':'none';
+
     if(hasVersions){
       const sorted=[...group.tracks].sort((a,b)=>(b.uploaded||'')>(a.uploaded||'')?1:-1);
       sorted.forEach((t,i)=>{
@@ -953,18 +1007,24 @@
     el.tagEditBtns.forEach(btn=>{btn.disabled=!track;btn.classList.toggle('active',track&&btn.dataset.stage===track.stage);});
   }
 
-  // ── Artwork ────────────────────────────────
+  // ── Pixel Art Artwork ──────────────────────
   function updatePlayerArtwork(track) {
-    if (!el.playerArt) return;
-    if (!track) {
-      el.playerArt.style.backgroundImage = '';
-      if (el.playerArtIdle) el.playerArtIdle.style.display = 'flex';
+    const artCanvas=$('player-art-canvas');
+    const miniCanvas=$('mini-art-canvas');
+
+    if(!track){
+      if(artCanvas){const ctx=artCanvas.getContext('2d');ctx.fillStyle='#FF91AF';ctx.fillRect(0,0,64,64);}
+      if(miniCanvas){miniCanvas.style.display='none';}
       return;
     }
-    const art = makeArtwork(track.title, track.stage);
-    if (art) {
-      el.playerArt.style.backgroundImage = `url(${art})`;
-      if (el.playerArtIdle) el.playerArtIdle.style.display = 'none';
+
+    if(artCanvas){
+      generatePixelArt('player-art-canvas', track.title);
+      track.artDataUrl=artCanvas.toDataURL('image/png');
+    }
+    if(miniCanvas){
+      miniCanvas.style.display='block';
+      generatePixelArt('mini-art-canvas', track.title);
     }
   }
 
@@ -1005,9 +1065,18 @@
   el.playerNote.addEventListener('keydown',e=>e.stopPropagation());
 
   // ── Player expand / collapse ───────────────
-  function setPlayerExpanded(expanded){state.playerExpanded=expanded;document.body.classList.toggle('player-expanded',expanded);}
+  function setPlayerExpanded(expanded){
+    state.playerExpanded=expanded;
+    document.body.classList.toggle('player-expanded',expanded);
+  }
+
   el.playerExpandBtn.addEventListener('click',()=>{if(state.playingTrack)setPlayerExpanded(!state.playerExpanded);});
   $('player-close-btn').addEventListener('click',()=>setPlayerExpanded(false));
+
+  // Backdrop click closes modal on desktop
+  if(el.playerBackdrop){
+    el.playerBackdrop.addEventListener('click',()=>setPlayerExpanded(false));
+  }
 
   // ── Favourite from player ──────────────────
   el.playerFavBtn.addEventListener('click',()=>{
@@ -1067,7 +1136,6 @@
   // ── Swipe gestures ──────────────────────────
   let swipeX=null,swipeY=null;
 
-  // Mini strip: swipe up=expand, left/right=prev/next
   el.playerBar.addEventListener('touchstart',e=>{
     if(e.target.closest('.player-full,.player-handle-btn'))return;
     swipeX=e.touches[0].clientX;swipeY=e.touches[0].clientY;
@@ -1076,22 +1144,19 @@
     if(swipeX===null)return;
     const dx=e.changedTouches[0].clientX-swipeX,dy=e.changedTouches[0].clientY-swipeY;
     swipeX=null;swipeY=null;
-    // Vertical: swipe up on mini = expand
     if(Math.abs(dy)>Math.abs(dx)&&Math.abs(dy)>44){
       if(dy<0&&!state.playerExpanded)setPlayerExpanded(true);
       return;
     }
-    // Horizontal: prev/next
     if(Math.abs(dx)<40||Math.abs(dy)>Math.abs(dx)*0.8)return;
     dx<0?playNext():playPrev();
   },{passive:true});
 
-  // Expanded player handle: swipe down = collapse
   let handleStartY=null,handleDidSwipe=false;
   el.playerToggleBtn.addEventListener('touchstart',e=>{handleStartY=e.touches[0].clientY;handleDidSwipe=false;},{passive:true});
   el.playerToggleBtn.addEventListener('touchend',e=>{
     if(handleStartY===null)return;
-    const dy=e.changedTouches[0].clientY-handleStartY; handleStartY=null;
+    const dy=e.changedTouches[0].clientY-handleStartY;handleStartY=null;
     if(Math.abs(dy)>44){
       handleDidSwipe=true;
       if(dy>0&&state.playerExpanded)setPlayerExpanded(false);
@@ -1109,18 +1174,16 @@
   $('playlists-btn').addEventListener('click',openPlaylistsPage);
   $('playlists-back-btn').addEventListener('click',closePlaylistsPage);
   $('new-playlist-btn').addEventListener('click',()=>{
-    const name=prompt('Playlist name:');if(!name||!name.trim())return;
+    const name=prompt('List name:');if(!name||!name.trim())return;
     createPlaylist(name.trim());renderPlaylistsPage();
   });
   $('playlist-detail-back-btn').addEventListener('click',goBackToPlaylistsList);
   $('playlist-play-all-btn').addEventListener('click',()=>{if(state.openPlaylistId)playFromPlaylist(state.openPlaylistId,null);});
-  // Embedded mini player buttons
   $('pl-mini-prev').addEventListener('click',playPrev);
   $('pl-mini-next').addEventListener('click',playNext);
   $('pl-mini-play').addEventListener('click',togglePlayPause);
   $('pl-mini-expand-btn').addEventListener('click',()=>{closePlaylistDetailPage();setPlayerExpanded(true);});
 
-  // Close version pickers when tapping elsewhere
   document.addEventListener('click',()=>{
     document.querySelectorAll('.pl-ver-opts.open').forEach(o=>o.classList.remove('open'));
     document.querySelectorAll('.pl-ver-trigger.open').forEach(o=>o.classList.remove('open'));
@@ -1157,11 +1220,10 @@
     const t=[];state.filteredGroups.forEach(g=>t.push(...g.tracks));return t;
   }
   function playNext(){
-    // If playlist is active, advance through it
     if(state.activePlaylistId&&state.playlistQueue.length){
       const idx=state.playlistQueue.findIndex(t=>t._idx===state.playingTrack?._idx);
       if(idx>=0&&idx<state.playlistQueue.length-1){const n=state.playlistQueue[idx+1];playTrack(n,findGroup(n));return;}
-      if(idx===state.playlistQueue.length-1)return; // end of playlist
+      if(idx===state.playlistQueue.length-1)return;
     }
     if(state.isShuffling&&state.shuffleQueue.length>0){const n=state.shuffleQueue.shift();playTrack(n,findGroup(n));return;}
     const flat=getFlatTracks(),idx=flat.indexOf(state.playingTrack);
@@ -1209,19 +1271,6 @@
   });
 
   // ── Media Session API ──────────────────────
-  function makeArtwork(title,stage){
-    try{
-      const size=512,canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;
-      const ctx=canvas.getContext('2d');ctx.fillStyle='#FF91AF';ctx.fillRect(0,0,size,size);
-      ctx.strokeStyle='#000';ctx.lineWidth=10;ctx.strokeRect(18,18,size-36,size-36);
-      if(stage){const badge=(TAG_FULL[stage]||stage).toUpperCase();ctx.font='bold 26px monospace';const bw=ctx.measureText(badge).width+28;ctx.fillStyle='#000';ctx.fillRect(36,36,bw,44);ctx.fillStyle='#FF91AF';ctx.textBaseline='middle';ctx.textAlign='left';ctx.fillText(badge,50,58);}
-      ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.font='bold 52px monospace';ctx.fillText('MILLO',size/2,190);ctx.fillRect(40,210,size-80,4);
-      ctx.font='bold 38px monospace';const words=title.toUpperCase().split(' ');let line='',y=292,maxW=size-80;
-      for(let i=0;i<words.length;i++){const test=line+(line?' ':'')+words[i];if(ctx.measureText(test).width>maxW&&line){ctx.fillText(line,size/2,y);line=words[i];y+=50;}else{line=test;}}
-      if(line)ctx.fillText(line,size/2,y);
-      return canvas.toDataURL('image/png');
-    }catch{return null;}
-  }
   function setupMediaSession(){
     if(!('mediaSession' in navigator))return;
     navigator.mediaSession.setActionHandler('play',()=>audio.play().catch(()=>{}));
@@ -1233,8 +1282,11 @@
   }
   function updateMediaSession(track){
     if(!('mediaSession' in navigator)||!track)return;
-    const artwork=makeArtwork(track.title,track.stage);
-    navigator.mediaSession.metadata=new MediaMetadata({title:track.title,artist:'MILLO',album:TAG_FULL[track.stage]||'ARCHIVE',artwork:artwork?[{src:artwork,sizes:'512x512',type:'image/png'}]:[]});
+    const artwork=track.artDataUrl||'';
+    navigator.mediaSession.metadata=new MediaMetadata({
+      title:track.title,artist:'MILLO',album:TAG_FULL[track.stage]||'ARCHIVE',
+      artwork:artwork?[{src:artwork,sizes:'64x64',type:'image/png'}]:[],
+    });
   }
   function updateMediaPosition(){
     if(!('mediaSession' in navigator)||!audio.duration)return;
@@ -1245,7 +1297,7 @@
   async function init(){
     setupMediaSession();updateTagEditorState(null);setVolume(1);
     el.downloadBtn.style.display='none';el.playerNote.disabled=true;
-    if(el.versionsHeading)el.versionsHeading.style.display='none';
+    if(el.tabBtnVersions)el.tabBtnVersions.style.display='none';
     try{
       await Promise.all([
         fetch(WORKER_URL).then(r=>r.json()).then(tracks=>{

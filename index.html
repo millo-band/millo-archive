@@ -108,10 +108,13 @@
     <div id="tracks-grid"></div>
   </main>
 
+  <!-- ══ PLAYER BACKDROP (desktop modal) ═══════════════════════════ -->
+  <div id="player-backdrop" class="player-backdrop"></div>
+
   <!-- ══ PLAYER ════════════════════════════════════════════════════════ -->
   <div id="player-bar">
 
-    <!-- HANDLE — visible + grabbable, more prominent when expanded -->
+    <!-- HANDLE — drag to expand on mobile, close on desktop -->
     <div class="player-handle-row">
       <button class="player-handle-btn" id="player-toggle-btn" aria-label="Toggle player">
         <div class="player-handle-notch"></div>
@@ -119,117 +122,96 @@
       <button class="player-close-btn" id="player-close-btn" aria-label="Close player">✕</button>
     </div>
 
-    <!-- EXPANDED CONTENT -->
+    <!-- EXPANDED CONTENT — single column, all controls visible -->
     <div class="player-full" id="player-full">
-      <div class="player-layout">
 
-        <!-- ── LEFT col (desktop) / BOTTOM (mobile): Notes + Versions ── -->
-        <div class="player-col-content">
-
-          <div class="player-content-section player-notes-section">
-            <div class="player-content-heading">NOTES</div>
-            <textarea id="player-note" class="player-note" placeholder="No note yet. Tap to add one..." disabled></textarea>
-            <div class="note-footer">
-              <span class="note-status" id="note-status"></span>
-            </div>
+      <!-- Art + Track info -->
+      <div class="player-top-row">
+        <canvas id="player-art-canvas" class="player-art-canvas" width="64" height="64"></canvas>
+        <div class="player-track-info">
+          <div class="player-track-title-row">
+            <span class="player-title-lg" id="player-title-lg">SELECT A TRACK</span>
+            <button class="player-fav-btn" id="player-fav-btn" aria-label="Favourite">★</button>
           </div>
-
-          <div class="player-content-section player-versions-section" id="player-versions-section">
-            <div class="player-content-heading" id="versions-heading" style="display:none">VERSIONS</div>
-            <div class="player-versions-list" id="player-versions"></div>
-            <div class="no-versions-msg" id="no-versions-msg" style="display:none"></div>
+          <div class="player-track-meta">
+            <span class="player-stage-lg" id="player-stage-lg"></span>
+            <span class="player-filename-lg" id="player-filename-lg"></span>
           </div>
-
+          <div class="player-playlist-row" id="player-playlist-row" style="display:none">
+            <svg width="9" height="9" viewBox="0 0 16 14" fill="none"><line x1="0" y1="1" x2="10" y2="1" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><line x1="0" y1="5" x2="10" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><line x1="0" y1="9" x2="7" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><polygon points="12,4 16,6.5 12,9" fill="currentColor"/></svg>
+            <span id="player-playlist-name"></span>
+          </div>
         </div>
+      </div>
 
-        <!-- ── RIGHT col (desktop) / TOP (mobile): Art + Controls ── -->
-        <div class="player-col-controls">
+      <!-- Scrub bar -->
+      <div class="player-scrub-section">
+        <div class="player-progress-track" id="player-progress-track">
+          <div class="player-progress-fill" id="player-progress-fill"></div>
+          <div class="player-progress-thumb" id="player-progress-thumb"></div>
+        </div>
+        <div class="player-time-row">
+          <span class="player-time" id="player-time">0:00</span>
+          <span class="player-dur" id="player-dur">0:00</span>
+        </div>
+      </div>
 
-          <!-- Artwork -->
-          <div class="player-art-wrap">
-            <div class="player-art" id="player-art">
-              <div class="player-art-idle" id="player-art-idle">
-                <svg width="40" height="40" viewBox="0 0 32 32" fill="none" opacity="0.25">
-                  <rect x="4" y="6" width="4" height="20" fill="#000"/>
-                  <rect x="14" y="6" width="4" height="20" fill="#000"/>
-                  <rect x="24" y="6" width="4" height="20" fill="#000"/>
-                  <rect x="8" y="6" width="6" height="4" fill="#000"/>
-                  <rect x="18" y="6" width="6" height="4" fill="#000"/>
-                  <rect x="8" y="14" width="6" height="4" fill="#000"/>
-                  <rect x="18" y="14" width="6" height="4" fill="#000"/>
-                </svg>
-              </div>
-            </div>
+      <!-- Main controls -->
+      <div class="player-controls-main">
+        <button class="pctrl-btn pctrl-loop" id="btn-loop" aria-label="Loop">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 10a6 6 0 1 0 1.5-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/><polyline points="1,4 3.5,6.5 6,4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"/></svg>
+        </button>
+        <button class="pctrl-btn pctrl-skip" id="btn-prev" aria-label="Previous">
+          <svg width="20" height="20" viewBox="0 0 12 12"><polygon points="11,1 11,11 1,6" fill="currentColor"/><rect x="0" y="1" width="2" height="10" fill="currentColor"/></svg>
+        </button>
+        <button class="pctrl-btn pctrl-play" id="btn-play" aria-label="Play/Pause">
+          <svg id="icon-play" width="28" height="28" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>
+          <svg id="icon-pause" width="28" height="28" viewBox="0 0 16 16" style="display:none"><rect x="1" y="1" width="5" height="14" fill="currentColor"/><rect x="10" y="1" width="5" height="14" fill="currentColor"/></svg>
+        </button>
+        <button class="pctrl-btn pctrl-skip" id="btn-next" aria-label="Next">
+          <svg width="20" height="20" viewBox="0 0 12 12"><polygon points="1,1 1,11 11,6" fill="currentColor"/><rect x="10" y="1" width="2" height="10" fill="currentColor"/></svg>
+        </button>
+        <a class="pctrl-btn pctrl-download" id="download-btn" aria-label="Download" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><line x1="8" y1="1" x2="8" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/><polyline points="4,8 8,12 12,8" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"/><line x1="2" y1="15" x2="14" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/></svg>
+        </a>
+      </div>
+
+      <!-- Tag editor + Volume -->
+      <div class="player-utilities">
+        <div class="player-tag-row" id="player-tag-row">
+          <span class="util-label">TAG</span>
+          <button class="tag-edit-btn" data-stage="idea">IDEA</button>
+          <button class="tag-edit-btn" data-stage="demo">DEMO</button>
+          <button class="tag-edit-btn" data-stage="finished">FINISHED</button>
+          <button class="tag-edit-btn" data-stage="complete">COMPLETE</button>
+        </div>
+        <div class="player-vol-row">
+          <span class="util-label">VOL</span>
+          <button class="vol-btn" id="vol-down">−</button>
+          <input type="range" id="player-volume" class="vol-slider" min="0" max="1" step="0.05" value="1">
+          <button class="vol-btn" id="vol-up">+</button>
+          <span class="vol-pct" id="vol-pct">100%</span>
+        </div>
+      </div>
+
+      <!-- Notes + Versions (tabbed) -->
+      <div class="player-bottom-section">
+        <div class="player-tabs" id="player-tabs">
+          <button class="ptab active" data-tab="notes">NOTES</button>
+          <button class="ptab" data-tab="versions" id="tab-btn-versions" style="display:none">VERSIONS</button>
+        </div>
+        <div class="ptab-panel active" id="tab-notes">
+          <textarea id="player-note" class="player-note" placeholder="No note yet. Tap to add one..." disabled></textarea>
+          <div class="note-footer">
+            <span class="note-status" id="note-status"></span>
           </div>
+        </div>
+        <div class="ptab-panel" id="tab-versions">
+          <div class="player-versions-list" id="player-versions"></div>
+          <div class="no-versions-msg" id="no-versions-msg" style="display:none">No other versions.</div>
+        </div>
+      </div>
 
-          <!-- Track info -->
-          <div class="player-track-info">
-            <div class="player-track-title-row">
-              <span class="player-title-lg" id="player-title-lg">SELECT A TRACK</span>
-              <button class="player-fav-btn" id="player-fav-btn" aria-label="Favourite">★</button>
-            </div>
-            <div class="player-track-meta">
-              <span class="player-stage-lg" id="player-stage-lg"></span>
-              <span class="player-filename-lg" id="player-filename-lg"></span>
-            </div>
-            <div class="player-playlist-row" id="player-playlist-row" style="display:none">
-              <svg width="9" height="9" viewBox="0 0 16 14" fill="none"><line x1="0" y1="1" x2="10" y2="1" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><line x1="0" y1="5" x2="10" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><line x1="0" y1="9" x2="7" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><polygon points="12,4 16,6.5 12,9" fill="currentColor"/></svg>
-              <span id="player-playlist-name"></span>
-            </div>
-          </div>
-
-          <!-- Scrub bar -->
-          <div class="player-scrub-section">
-            <div class="player-progress-track" id="player-progress-track">
-              <div class="player-progress-fill" id="player-progress-fill"></div>
-              <div class="player-progress-thumb" id="player-progress-thumb"></div>
-            </div>
-            <div class="player-time-row">
-              <span class="player-time" id="player-time">0:00</span>
-              <span class="player-dur" id="player-dur">0:00</span>
-            </div>
-          </div>
-
-          <!-- Main controls -->
-          <div class="player-controls-main">
-            <button class="pctrl-btn pctrl-loop" id="btn-loop" aria-label="Loop">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 10a6 6 0 1 0 1.5-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/><polyline points="1,4 3.5,6.5 6,4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"/></svg>
-            </button>
-            <button class="pctrl-btn pctrl-skip" id="btn-prev" aria-label="Previous">
-              <svg width="20" height="20" viewBox="0 0 12 12"><polygon points="11,1 11,11 1,6" fill="currentColor"/><rect x="0" y="1" width="2" height="10" fill="currentColor"/></svg>
-            </button>
-            <button class="pctrl-btn pctrl-play" id="btn-play" aria-label="Play/Pause">
-              <svg id="icon-play" width="28" height="28" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>
-              <svg id="icon-pause" width="28" height="28" viewBox="0 0 16 16" style="display:none"><rect x="1" y="1" width="5" height="14" fill="currentColor"/><rect x="10" y="1" width="5" height="14" fill="currentColor"/></svg>
-            </button>
-            <button class="pctrl-btn pctrl-skip" id="btn-next" aria-label="Next">
-              <svg width="20" height="20" viewBox="0 0 12 12"><polygon points="1,1 1,11 11,6" fill="currentColor"/><rect x="10" y="1" width="2" height="10" fill="currentColor"/></svg>
-            </button>
-            <a class="pctrl-btn pctrl-download" id="download-btn" aria-label="Download" style="display:none">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><line x1="8" y1="1" x2="8" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/><polyline points="4,8 8,12 12,8" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"/><line x1="2" y1="15" x2="14" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/></svg>
-            </a>
-          </div>
-
-          <!-- Tag editor + Volume -->
-          <div class="player-utilities">
-            <div class="player-tag-row" id="player-tag-row">
-              <span class="util-label">TAG</span>
-              <button class="tag-edit-btn" data-stage="idea">IDEA</button>
-              <button class="tag-edit-btn" data-stage="demo">DEMO</button>
-              <button class="tag-edit-btn" data-stage="finished">FINISHED</button>
-              <button class="tag-edit-btn" data-stage="complete">COMPLETE</button>
-            </div>
-            <div class="player-vol-row">
-              <span class="util-label">VOL</span>
-              <button class="vol-btn" id="vol-down">−</button>
-              <input type="range" id="player-volume" class="vol-slider" min="0" max="1" step="0.05" value="1">
-              <button class="vol-btn" id="vol-up">+</button>
-              <span class="vol-pct" id="vol-pct">100%</span>
-            </div>
-          </div>
-
-        </div><!-- end .player-col-controls -->
-      </div><!-- end .player-layout -->
     </div><!-- end .player-full -->
 
     <!-- MINI STRIP — always visible -->
@@ -239,8 +221,11 @@
       </div>
       <div class="player-mini-row">
         <div class="player-mini-info" id="player-expand-btn">
-          <span class="player-title" id="player-title">— SELECT A TRACK —</span>
-          <span class="player-stage" id="player-stage"></span>
+          <canvas id="mini-art-canvas" class="mini-art-canvas" width="64" height="64"></canvas>
+          <div class="player-mini-text-block">
+            <span class="player-title" id="player-title">— SELECT A TRACK —</span>
+            <span class="player-stage" id="player-stage"></span>
+          </div>
         </div>
         <div class="player-mini-controls">
           <button class="mini-ctrl" id="mini-btn-prev" aria-label="Previous">
@@ -276,20 +261,20 @@
     <div class="overlay-body" id="song-page-body"></div>
   </div>
 
-  <!-- ══ PLAYLISTS LIST OVERLAY ══════════════════════════════════════ -->
+  <!-- ══ LISTS OVERLAY ══════════════════════════════════════ -->
   <div id="playlists-page" class="overlay-page" style="display:none">
     <div class="overlay-header">
       <button class="overlay-back-btn" id="playlists-back-btn">
         <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="8,1 3,6 8,11" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
         BACK
       </button>
-      <span class="overlay-page-title">PLAYLISTS</span>
+      <span class="overlay-page-title">LISTS</span>
       <button class="overlay-action-btn" id="new-playlist-btn">+ NEW</button>
     </div>
     <div class="overlay-body" id="playlists-body"></div>
   </div>
 
-  <!-- ══ PLAYLIST DETAIL OVERLAY ════════════════════════════════════ -->
+  <!-- ══ LIST DETAIL OVERLAY ════════════════════════════════════ -->
   <div id="playlist-detail-page" class="overlay-page" style="display:none">
     <div class="overlay-header">
       <button class="overlay-back-btn" id="playlist-detail-back-btn">
