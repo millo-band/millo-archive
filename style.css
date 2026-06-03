@@ -11,7 +11,6 @@
   --mass-edit-h: 0px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --mini-h: 68px;       /* collapsed player height (not counting safe area) */
-  --folder-h: 0px;
   --border: 1px solid var(--black);
   --shadow: 2px 2px 0px var(--black);
   --shadow-lg: 3px 3px 0px var(--black);
@@ -169,7 +168,7 @@ body.edit-mode { --mass-edit-h: 44px; }
 /* ══ MAIN CONTENT ════════════════════════════ */
 #main-content {
   position: fixed;
-  top: calc(var(--header-h) + var(--controls-h) + var(--search-h) + var(--mass-edit-h) + var(--folder-h));
+  top: calc(var(--header-h) + var(--controls-h) + var(--search-h) + var(--mass-edit-h));
   left: 0; right: 0; bottom: calc(var(--mini-h) + var(--safe-bottom));
   overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px;
 }
@@ -552,34 +551,15 @@ body.player-expanded .player-mini-controls { display: none; }
 .track-card.playing .view-song-btn { border-color:var(--pink);color:var(--pink);box-shadow:2px 2px 0 var(--pink); }
 .view-song-btn:active { transform:translate(2px,2px);box-shadow:none; }
 
-/* ══ FOLDERS NAV BUTTON ══════════════════════ */
-.folders-nav-btn {
+/* ══ PLAYLISTS NAV BUTTON ════════════════════ */
+.playlists-nav-btn {
   font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;letter-spacing:0.1em;
   background:var(--pink);color:var(--black);border:var(--border);
   padding:5px 10px;cursor:pointer;box-shadow:var(--shadow);min-height:30px;
   display:flex;align-items:center;gap:6px;flex-shrink:0;
   -webkit-tap-highlight-color:transparent;
 }
-.folders-nav-btn:active { transform:translate(2px,2px);box-shadow:none; }
-
-/* ══ FOLDER BREADCRUMB BAR ═══════════════════ */
-#folder-breadcrumb {
-  position:fixed;
-  top:calc(var(--header-h) + var(--controls-h) + var(--search-h) + var(--mass-edit-h));
-  /* sits between mass-edit and main-content */
-  left:0;right:0;height:36px;
-  background:var(--black);color:var(--pink);z-index:197;
-  display:flex;align-items:center;gap:10px;padding:0 14px;
-  font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.08em;
-}
-body.folder-active { --folder-h: 36px; }
-.folder-bc-name { flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-.folder-bc-exit {
-  font-family:'Press Start 2P',monospace;font-size:6px;letter-spacing:0.1em;
-  background:transparent;color:var(--pink);border:1px solid var(--pink);
-  padding:4px 8px;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;
-}
-.folder-bc-exit:hover { background:var(--pink);color:var(--black); }
+.playlists-nav-btn:active { transform:translate(2px,2px);box-shadow:none; }
 
 /* ══ OVERLAY PAGES ═══════════════════════════ */
 .overlay-page {
@@ -696,8 +676,8 @@ body.folder-active { --folder-h: 36px; }
 }
 .sp-ver-note.empty { opacity:0.28;font-style:italic; }
 
-/* Folders section on song page */
-.sp-folders-section { padding-bottom:14px; }
+/* Playlists section on song page */
+.sp-playlists-section { padding-bottom:14px; }
 .sp-folder-chips {
   display:flex;flex-wrap:wrap;gap:8px;
 }
@@ -720,7 +700,7 @@ body.folder-active { --folder-h: 36px; }
   opacity:0.35;line-height:2.2;
 }
 
-/* ══ FOLDERS PAGE ════════════════════════════ */
+/* ══ PLAYLISTS LIST PAGE ═════════════════════ */
 .folder-grid {
   display:grid;grid-template-columns:repeat(2,1fr);gap:12px;
   padding:20px 16px;
@@ -748,6 +728,113 @@ body.folder-active { --folder-h: 36px; }
   opacity:0.2;-webkit-tap-highlight-color:transparent;line-height:1;padding:4px;
 }
 .folder-card-del:hover { opacity:0.8; }
+
+/* ══ PLAYLIST DETAIL PAGE ════════════════════ */
+.pl-play-all-btn {
+  font-family:'Press Start 2P',monospace;font-size:7px;letter-spacing:0.1em;
+  background:var(--black);color:var(--pink);border:2px solid var(--black);
+  padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:7px;
+  flex-shrink:0;-webkit-tap-highlight-color:transparent;
+}
+.pl-play-all-btn:active { transform:translate(2px,2px); }
+
+.pl-track-row {
+  display:flex;align-items:center;gap:10px;
+  padding:13px 14px;border-bottom:1px dashed rgba(0,0,0,0.18);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  position:relative;
+}
+.pl-track-row:last-of-type { border-bottom:none; }
+.pl-track-row:active { background:rgba(0,0,0,0.04); }
+.pl-track-row.pl-playing { background:var(--black);color:var(--pink); }
+
+.pl-track-num {
+  font-family:'Press Start 2P',monospace;font-size:7px;letter-spacing:0.05em;
+  opacity:0.35;flex-shrink:0;min-width:22px;text-align:center;
+}
+.pl-track-row.pl-playing .pl-track-num { opacity:1; }
+.pl-playing-dot {
+  display:inline-block;width:7px;height:7px;background:var(--pink);
+  animation:blink 0.8s step-end infinite;
+}
+
+.pl-reorder {
+  display:flex;flex-direction:column;gap:2px;flex-shrink:0;
+}
+.pl-reorder-btn {
+  font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1;
+  background:none;border:none;cursor:pointer;padding:2px 4px;
+  opacity:0.3;-webkit-tap-highlight-color:transparent;color:currentColor;
+}
+.pl-reorder-btn:not(:disabled):hover { opacity:0.8; }
+.pl-reorder-btn:disabled { opacity:0.1;cursor:default; }
+
+.pl-track-info { flex:1;min-width:0;display:flex;flex-direction:column;gap:5px; }
+.pl-track-title {
+  font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+.pl-ver-wrap { position:relative; }
+.pl-ver-trigger {
+  font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;letter-spacing:0.08em;
+  background:none;border:var(--border);padding:3px 8px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;color:currentColor;
+  display:inline-flex;align-items:center;gap:5px;
+}
+.pl-track-row.pl-playing .pl-ver-trigger { border-color:var(--pink); }
+.pl-ver-trigger:after { content:'▾';font-size:8px;opacity:0.5; }
+.pl-ver-trigger.open:after { content:'▴'; }
+.pl-ver-trigger:active { opacity:0.7; }
+
+.pl-ver-opts {
+  display:none;flex-direction:column;gap:0;
+  position:absolute;left:0;top:calc(100% + 4px);
+  background:var(--pink);border:var(--border);box-shadow:var(--shadow-lg);
+  z-index:50;min-width:200px;
+}
+.pl-ver-opts.open { display:flex; }
+.pl-ver-opt {
+  font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;letter-spacing:0.06em;
+  background:var(--pink);color:var(--black);border:none;border-bottom:1px dashed rgba(0,0,0,0.15);
+  padding:10px 12px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;
+  -webkit-tap-highlight-color:transparent;
+}
+.pl-ver-opt:last-child { border-bottom:none; }
+.pl-ver-opt:hover { background:rgba(0,0,0,0.06); }
+.pl-ver-opt.active { background:var(--black);color:var(--pink); }
+.pl-ver-opt-dur { margin-left:auto;opacity:0.5;flex-shrink:0; }
+
+.pl-track-play {
+  width:36px;height:36px;flex-shrink:0;
+  background:var(--pink);color:var(--black);border:var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;box-shadow:var(--shadow);-webkit-tap-highlight-color:transparent;
+}
+.pl-track-row.pl-playing .pl-track-play { background:var(--pink);color:var(--black);border-color:var(--pink); }
+.pl-track-play:active { transform:translate(2px,2px);box-shadow:none; }
+
+.pl-track-remove {
+  background:none;border:none;font-size:13px;cursor:pointer;
+  opacity:0.2;flex-shrink:0;-webkit-tap-highlight-color:transparent;
+  padding:4px;color:currentColor;
+}
+.pl-track-remove:hover { opacity:0.8; }
+
+.pl-add-hint {
+  padding:24px 16px;font-family:'Press Start 2P',monospace;font-size:6px;
+  letter-spacing:0.1em;opacity:0.25;line-height:2;text-align:center;
+}
+
+/* ══ PLAYER PLAYLIST BADGE ═══════════════════ */
+.player-playlist-row {
+  display:flex;align-items:center;gap:6px;margin-top:4px;
+  font-family:'Press Start 2P',monospace;font-size:6px;letter-spacing:0.1em;opacity:0.5;
+}
+.sp-playlist-hint {
+  padding:12px 0 0;font-family:'Press Start 2P',monospace;font-size:6px;
+  letter-spacing:0.08em;opacity:0.3;line-height:1.9;
+}
 
 /* ══ SHARE TOAST ═════════════════════════════ */
 .share-toast {
