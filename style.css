@@ -10,7 +10,7 @@
   --search-h: 0px;
   --mass-edit-h: 0px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --mini-h: 68px;       /* collapsed player height (not counting safe area) */
+  --mini-h: 86px;       /* collapsed player height (not counting safe area) */
   --border: 1px solid var(--black);
   --shadow: 2px 2px 0px var(--black);
   --shadow-lg: 3px 3px 0px var(--black);
@@ -169,7 +169,7 @@ body.edit-mode { --mass-edit-h: 44px; }
 #main-content {
   position: fixed;
   top: calc(var(--header-h) + var(--controls-h) + var(--search-h) + var(--mass-edit-h));
-  left: 0; right: 0; bottom: calc(var(--mini-h) + var(--safe-bottom));
+  left: 0; right: 0; bottom: calc(var(--mini-h) + var(--safe-bottom) + 4px);
   overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px;
 }
 #main-content::-webkit-scrollbar { width: 3px; }
@@ -287,7 +287,7 @@ body.edit-mode .card-select-check { display: flex; }
 /* ══ PLAYER ══════════════════════════════════ */
 #player-bar {
   position: fixed; left: 0; right: 0; bottom: 0;
-  height: var(--mini-h);
+  height: calc(var(--mini-h) + var(--safe-bottom));
   background: var(--pink); border-top: 2px solid var(--black);
   z-index: 300; overflow: hidden; display: flex; flex-direction: column;
   transition: height 0.38s cubic-bezier(0.4, 0, 0.2, 1);
@@ -318,12 +318,12 @@ body.player-expanded .player-handle-pip { opacity: 0.4; }
 .player-close-btn {
   position: absolute; right: 0; top: 0; bottom: 0;
   background: none; border: none; cursor: pointer;
-  font-size: 15px; padding: 0 16px;
+  font-size: 18px; padding: 0 18px;
   color: var(--black); opacity: 0; pointer-events: none;
-  -webkit-tap-highlight-color: transparent; transition: opacity 0.15s;
+  -webkit-tap-highlight-color: transparent; transition: opacity 0.2s;
 }
-body.player-expanded .player-close-btn { opacity: 0.35; pointer-events: all; }
-body.player-expanded .player-close-btn:hover { opacity: 0.9; }
+body.player-expanded .player-close-btn { opacity: 0.5; pointer-events: all; }
+body.player-expanded .player-close-btn:hover { opacity: 1; }
 
 /* ── EXPANDED CONTENT ─────────────────────── */
 .player-full {
@@ -515,12 +515,12 @@ body.player-expanded .player-full {
 /* ── MINI STRIP ───────────────────────────── */
 .player-mini { flex-shrink: 0; display: flex; flex-direction: column; padding-bottom: var(--safe-bottom); }
 .player-mini-prog {
-  height: 2px; background: rgba(0,0,0,0.1); width: 100%; flex-shrink: 0;
+  height: 3px; background: rgba(0,0,0,0.1); width: 100%; flex-shrink: 0;
 }
 .player-mini-prog-fill { height: 100%; background: var(--black); width: 0%; transition: width 0.5s linear; }
 .player-mini-row {
   display: grid; grid-template-columns: 1fr auto;
-  align-items: center; gap: 12px; padding: 0 16px; height: calc(var(--mini-h) - 2px);
+  align-items: center; gap: 12px; padding: 0 18px; height: calc(var(--mini-h) - 3px);
 }
 .player-mini-info { min-width: 0; cursor: pointer; }
 .player-title {
@@ -566,6 +566,11 @@ body.player-expanded .player-mini-controls { display: none; }
   position:fixed;top:0;left:0;right:0;bottom:0;
   background:var(--pink);z-index:500;
   display:flex;flex-direction:column;
+}
+/* Song page stops at player so player is always accessible */
+#song-page {
+  bottom: calc(var(--mini-h) + var(--safe-bottom));
+  z-index: 400;
 }
 
 .overlay-header {
@@ -835,6 +840,19 @@ body.player-expanded .player-mini-controls { display: none; }
   padding:12px 0 0;font-family:'Press Start 2P',monospace;font-size:6px;
   letter-spacing:0.08em;opacity:0.3;line-height:1.9;
 }
+
+/* ══ PLAYLIST STATS BAR ══════════════════════ */
+.pl-stats-bar {
+  flex-shrink:0;
+  padding:8px 16px 9px;
+  border-bottom:var(--border);
+  background:var(--black);color:var(--pink);
+  display:flex;align-items:center;gap:16px;
+  font-family:'Press Start 2P',monospace;font-size:6px;letter-spacing:0.12em;
+}
+.pl-stats-count { opacity:0.7; }
+.pl-stats-dur { opacity:0.7; }
+.pl-stats-sep { opacity:0.3; }
 
 /* ══ SHARE TOAST ═════════════════════════════ */
 .share-toast {

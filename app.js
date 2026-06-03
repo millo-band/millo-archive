@@ -141,6 +141,7 @@
     playlistsPage:$('playlists-page'), playlistsBody:$('playlists-body'),
     playlistDetailPage:$('playlist-detail-page'),
     playlistDetailTitle:$('playlist-detail-title'), playlistDetailBody:$('playlist-detail-body'),
+    playlistStatsBar:$('playlist-stats-bar'),
   };
 
   // ── Dropdowns ──────────────────────────────
@@ -509,6 +510,7 @@
   }
   function closePlaylistDetailPage(){
     el.playlistDetailPage.style.display='none';
+    if(el.playlistStatsBar)el.playlistStatsBar.style.display='none';
     state.openPlaylistId=null;
     document.body.classList.remove('overlay-open');
   }
@@ -526,6 +528,36 @@
 
     el.playlistDetailTitle.textContent=pl.name.toUpperCase();
     el.playlistDetailBody.innerHTML='';
+
+    // Stats bar
+    const statsBar=$('playlist-stats-bar');
+    const statsCount=$('playlist-stats-count');
+    const statsDur=$('playlist-stats-dur');
+    if(statsBar){
+      if(pl.tracks.length){
+        statsBar.style.display='flex';
+        statsCount.textContent=`${pl.tracks.length} SONG${pl.tracks.length!==1?'S':''}`;
+        statsDur.textContent='...';
+        // Sum durations async
+        const trackObjs=pl.tracks.map(pt=>state.allTracks.find(t=>t.filename===pt.filename)).filter(Boolean);
+        let total=0,loaded=0;
+        if(!trackObjs.length){statsDur.textContent='—';}
+        else{
+          trackObjs.forEach(t=>{
+            const p=new Audio();p.preload='metadata';p.src=t.file;
+            p.addEventListener('loadedmetadata',()=>{
+              total+=p.duration;loaded++;
+              if(loaded===trackObjs.length){
+                const m=Math.floor(total/60),s=Math.floor(total%60);
+                statsDur.textContent=`${m}:${s.toString().padStart(2,'0')}`;
+              }
+            });
+          });
+        }
+      } else {
+        statsBar.style.display='none';
+      }
+    }
 
     if(!pl.tracks.length){
       const empty=document.createElement('div');empty.className='sp-empty';
@@ -841,7 +873,6 @@
 
   // ── Player expand / collapse ───────────────
   function setPlayerExpanded(expanded){state.playerExpanded=expanded;document.body.classList.toggle('player-expanded',expanded);}
-  el.playerToggleBtn.addEventListener('click',()=>setPlayerExpanded(!state.playerExpanded));
   el.playerExpandBtn.addEventListener('click',()=>{if(state.playingTrack)setPlayerExpanded(!state.playerExpanded);});
   $('player-close-btn').addEventListener('click',()=>setPlayerExpanded(false));
 
@@ -900,16 +931,44 @@
   }
   function updateMassEditCount(){el.massEditCount.textContent=`${state.selectedFilenames.size} SELECTED`;}
 
-  // ── Swipe mini strip ───────────────────────
+  // ── Swipe gestures ──────────────────────────
   let swipeX=null,swipeY=null;
-  el.playerBar.addEventListener('touchstart',e=>{if(e.target.closest('.player-full,.player-handle-btn'))return;swipeX=e.touches[0].clientX;swipeY=e.touches[0].clientY;},{passive:true});
+
+  // Mini strip: swipe up=expand, left/right=prev/next
+  el.playerBar.addEventListener('touchstart',e=>{
+    if(e.target.closest('.player-full,.player-handle-btn'))return;
+    swipeX=e.touches[0].clientX;swipeY=e.touches[0].clientY;
+  },{passive:true});
   el.playerBar.addEventListener('touchend',e=>{
     if(swipeX===null)return;
     const dx=e.changedTouches[0].clientX-swipeX,dy=e.changedTouches[0].clientY-swipeY;
     swipeX=null;swipeY=null;
+    // Vertical: swipe up on mini = expand
+    if(Math.abs(dy)>Math.abs(dx)&&Math.abs(dy)>44){
+      if(dy<0&&!state.playerExpanded)setPlayerExpanded(true);
+      return;
+    }
+    // Horizontal: prev/next
     if(Math.abs(dx)<40||Math.abs(dy)>Math.abs(dx)*0.8)return;
     dx<0?playNext():playPrev();
   },{passive:true});
+
+  // Expanded player handle: swipe down = collapse
+  let handleStartY=null,handleDidSwipe=false;
+  el.playerToggleBtn.addEventListener('touchstart',e=>{handleStartY=e.touches[0].clientY;handleDidSwipe=false;},{passive:true});
+  el.playerToggleBtn.addEventListener('touchend',e=>{
+    if(handleStartY===null)return;
+    const dy=e.changedTouches[0].clientY-handleStartY; handleStartY=null;
+    if(Math.abs(dy)>44){
+      handleDidSwipe=true;
+      if(dy>0&&state.playerExpanded)setPlayerExpanded(false);
+      else if(dy<0&&!state.playerExpanded)setPlayerExpanded(true);
+    }
+  },{passive:true});
+  el.playerToggleBtn.addEventListener('click',()=>{
+    if(handleDidSwipe){handleDidSwipe=false;return;}
+    setPlayerExpanded(!state.playerExpanded);
+  });
 
   // ── Button listeners ───────────────────────
   $('song-back-btn').addEventListener('click',closeSongPage);
