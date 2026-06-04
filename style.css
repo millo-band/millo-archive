@@ -913,6 +913,55 @@ body.player-expanded .player-full {
 }
 .share-toast.visible { opacity:1;transform:translateX(-50%) translateY(0); }
 
+/* ══ PLAYER SHARE BUTTON ══════════════════════ */
+.player-share-btn {
+  background: none; border: none; cursor: pointer; flex-shrink: 0;
+  opacity: 0.25; line-height: 1; padding: 4px; margin-top: 2px;
+  -webkit-tap-highlight-color: transparent; color: var(--black);
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.15s;
+}
+.player-share-btn:hover { opacity: 0.7; }
+.player-share-btn:active { opacity: 1; }
+
+/* ══ VERSION ROW SHARE BUTTON ════════════════ */
+.sp-ver-share-btn {
+  background: none; border: none; cursor: pointer; flex-shrink: 0;
+  opacity: 0.2; padding: 5px; margin-left: 4px; color: currentColor;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent; transition: opacity 0.15s;
+}
+.sp-ver-share-btn:hover { opacity: 0.7; }
+.sp-ver-row.sp-playing .sp-ver-share-btn { opacity: 0.4; }
+.sp-ver-row.sp-playing .sp-ver-share-btn:hover { opacity: 1; }
+
+/* ══ QUEUE TAB ═══════════════════════════════ */
+.player-queue-list {
+  display: flex; flex-direction: column; overflow-y: auto; flex: 1;
+}
+.queue-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 18px; min-height: 46px;
+  border-bottom: 1px dashed rgba(0,0,0,0.1);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s;
+}
+.queue-row:last-child { border-bottom: none; }
+.queue-row:hover { background: rgba(0,0,0,0.03); }
+.queue-row:active { background: rgba(0,0,0,0.07); }
+.queue-row-num { font-size: 8px; opacity: 0.3; flex-shrink: 0; min-width: 22px; letter-spacing: 0.04em; }
+.queue-row-title { font-size: 11px; font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue-row-stage {
+  font-family: 'IBM Plex Mono', monospace; font-size: 7px; font-weight: 700;
+  border: var(--border); padding: 1px 5px; flex-shrink: 0; letter-spacing: 0.08em;
+  opacity: 0.6;
+}
+.queue-empty {
+  padding: 28px 18px;
+  font-family: 'Press Start 2P', monospace; font-size: 7px;
+  letter-spacing: 0.12em; opacity: 0.3; text-align: center;
+}
+
 /* ══ RESPONSIVE ══════════════════════════════ */
 @media (min-width: 640px) {
   :root { --header-h: 72px; --controls-h: 46px; }
