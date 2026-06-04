@@ -312,28 +312,25 @@ body.player-expanded #player-bar {
   height: calc(100dvh - var(--header-h) - var(--controls-h) - var(--search-h) - var(--mass-edit-h));
 }
 
-/* Desktop: centered popup modal */
+/* Desktop: no modal — persistent top strip only */
 @media (min-width: 768px) {
   body.player-expanded #player-bar {
     position: fixed;
-    left: 50%;
-    top: 50%;
-    right: auto;
-    bottom: auto;
-    width: min(520px, 94vw);
-    height: auto;
-    max-height: min(82vh, 700px);
-    transform: translate(-50%, -50%);
+    top: var(--header-h);
+    left: 0; right: 0; bottom: auto;
+    width: auto;
+    height: 68px;
+    transform: none;
     transition: none;
-    border: 2px solid var(--black);
-    box-shadow: 8px 8px 0 var(--black);
-    border-radius: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
+    box-shadow: none;
+    border: none;
+    border-bottom: var(--border);
+    max-height: none;
+    overflow: hidden;
   }
-  /* Hide mini strip inside the modal on desktop — controls are in the modal itself */
+  /* Always show mini strip on desktop */
   body.player-expanded .player-mini {
-    display: none;
+    display: flex;
   }
 }
 
@@ -387,10 +384,10 @@ body.player-expanded .player-full {
   transition: opacity 0.18s 0.12s;
 }
 
-/* Desktop: no overflow on modal (let container scroll) */
+/* Desktop: full panel hidden — mini strip only */
 @media (min-width: 768px) {
   .player-full {
-    overflow-y: visible;
+    display: none;
   }
 }
 
@@ -968,4 +965,61 @@ body.player-expanded .player-full {
   .site-title { font-size: 22px; }
   .card-title { font-size: 12px; }
   .player-title-lg { font-size: 19px; }
+}
+
+/* ══ DESKTOP — PERSISTENT TOP PLAYER ══════════════════════════════
+   Player bar lives between the header and controls bar.
+   No modal popup. Always visible, even on overlay pages.
+═══════════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+
+  /* Header: highest z-index so its border sits above the player strip */
+  #site-header { z-index: 700; }
+
+  /* ── Player bar: pinned strip directly below header ───────────── */
+  #player-bar {
+    top: var(--header-h);
+    bottom: auto;
+    height: 68px;
+    border-top: none;
+    border-bottom: var(--border);
+    z-index: 600;   /* above overlay pages (500) */
+    overflow: hidden;
+    transition: none;
+  }
+
+  /* Handle row not needed on desktop */
+  .player-handle-row { display: none; }
+
+  /* No backdrop */
+  .player-backdrop { display: none !important; }
+
+  /* Mini strip fills the bar */
+  .player-mini { height: 68px; padding-bottom: 0; }
+  .player-mini-row { height: 65px; }
+
+  /* ── Shift layout down to make room for player strip ──────────── */
+  #controls-bar {
+    top: calc(var(--header-h) + 68px);
+  }
+  #search-bar {
+    top: calc(var(--header-h) + 68px + var(--controls-h));
+  }
+  #mass-edit-bar {
+    top: calc(var(--header-h) + 68px + var(--controls-h) + var(--search-h));
+  }
+  #main-content {
+    top: calc(var(--header-h) + 68px + var(--controls-h) + var(--search-h) + var(--mass-edit-h));
+    bottom: 0; /* no bottom mini bar on desktop */
+  }
+
+  /* ── Overlay pages: start below the persistent player ─────────── */
+  .overlay-page {
+    top: calc(var(--header-h) + 68px);
+  }
+  #song-page { bottom: 0; }
+  #playlist-detail-page { bottom: 0; }
+
+  /* Share toast: no longer needs to clear bottom mini bar */
+  .share-toast { bottom: 24px; }
 }
