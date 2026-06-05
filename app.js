@@ -126,6 +126,7 @@
     iconPlay:$('icon-play'), iconPause:$('icon-pause'),
     downloadBtn:$('download-btn'),
     tagEditBtns:document.querySelectorAll('.tag-edit-btn'),
+    playerListChips:$('player-list-chips'),
     playerNote:$('player-note'), noteStatus:$('note-status'),
     playerVolume:$('player-volume'), volPct:$('vol-pct'),
     playerTitle:$('player-title'), playerStage:$('player-stage'),
@@ -553,6 +554,9 @@
     el.playlistDetailTitle.textContent=pl.name.toUpperCase();
     el.playlistDetailBody.innerHTML='';
 
+    // Build the big pixel art cover specific to this list
+    generatePixelArt('pl-detail-canvas', pl.name);
+
     const statsBar=$('playlist-stats-bar');
     const statsCount=$('playlist-stats-count');
     const statsDur=$('playlist-stats-dur');
@@ -654,11 +658,6 @@
       info.appendChild(verWrap);
       row.appendChild(info);
 
-      const playBtn=document.createElement('button');playBtn.className='pl-track-play';
-      playBtn.innerHTML=`<svg width="11" height="11" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>`;
-      playBtn.addEventListener('click',e=>{e.stopPropagation();playFromPlaylist(id,resolvedTrack.filename);});
-      row.appendChild(playBtn);
-
       const rmBtn=document.createElement('button');rmBtn.className='pl-track-remove';rmBtn.textContent='✕';
       rmBtn.addEventListener('click',e=>{
         e.stopPropagation();
@@ -676,7 +675,6 @@
     el.playlistDetailBody.appendChild(hint);
 
     setupPlaylistDragDrop(el.playlistDetailBody, id);
-    updateEmbeddedPlayer();
   }
 
   // ── Drag and Drop ────────────────────────────
@@ -748,29 +746,6 @@
       touch.active=false;
       if(newIdx!==touch.startIdx){reorderPlaylistTrack(playlistId,touch.startIdx,newIdx);renderPlaylistDetailPage(playlistId);}
     });
-  }
-
-  // ── Embedded mini player (in playlist overlay) ──
-  function updateEmbeddedPlayer(){
-    const titleEl=$('pl-mini-title');
-    const stageEl=$('pl-mini-stage');
-    const fillEl=$('pl-mini-fill');
-    const playIcon=$('pl-mini-icon-play');
-    const pauseIcon=$('pl-mini-icon-pause');
-    if(!titleEl)return;
-    if(state.playingTrack){
-      titleEl.textContent=state.playingTrack.title;
-      stageEl.textContent=TAG_LABEL[state.playingTrack.stage]||'';
-      stageEl.style.display=TAG_LABEL[state.playingTrack.stage]?'inline-block':'none';
-    } else {
-      titleEl.textContent='— NOTHING PLAYING —';
-      stageEl.textContent='';stageEl.style.display='none';
-    }
-    if(playIcon&&pauseIcon){
-      playIcon.style.display=state.isPlaying?'none':'block';
-      pauseIcon.style.display=state.isPlaying?'block':'none';
-    }
-    if(fillEl&&audio.duration)fillEl.style.width=`${(audio.currentTime/audio.duration)*100}%`;
   }
 
   // ── Queue Tab ────────────────────────────────
@@ -1019,6 +994,7 @@
       el.playerNote.value='';el.playerNote.disabled=true;
       el.playerVersionsList.innerHTML='';
       if(el.tabBtnVersions)el.tabBtnVersions.style.display='none';
+      if(el.playerListChips)el.playerListChips.innerHTML='';
       updatePlayerArtwork(null);
       updateTagEditorState(null);return;
     }
@@ -1043,6 +1019,44 @@
 
     // Artwork
     updatePlayerArtwork(track);
+
+    // List Editor Chips
+    if (el.playerListChips) {
+      el.playerListChips.innerHTML = '';
+      const playlists = getPlaylists();
+      const songKey = group.title.toLowerCase();
+      
+      Object.entries(playlists).forEach(([id, pl]) => {
+        const inPl = isSongInPlaylist(id, songKey);
+        const chip = document.createElement('button');
+        chip.className = 'tag-edit-btn pl-add-chip' + (inPl ? ' active' : '');
+        chip.textContent = pl.name.toUpperCase();
+        chip.addEventListener('click', () => {
+          if (isSongInPlaylist(id, songKey)) {
+            removeSongFromPlaylist(id, songKey);
+            chip.classList.remove('active');
+          } else {
+            addSongToPlaylist(id, songKey, track.filename);
+            chip.classList.add('active');
+          }
+          if(state.openPlaylistId === id) renderPlaylistDetailPage(id);
+        });
+        el.playerListChips.appendChild(chip);
+      });
+      
+      const newBtn = document.createElement('button');
+      newBtn.className = 'tag-edit-btn pl-add-chip pl-new-chip';
+      newBtn.textContent = '+ NEW';
+      newBtn.addEventListener('click', () => {
+        const name = prompt('List name:');
+        if(!name || !name.trim()) return;
+        const id = createPlaylist(name.trim());
+        addSongToPlaylist(id, songKey, track.filename);
+        updatePlayerBar(state.playingTrack, state.playingGroup);
+        if(state.openPlaylistId === id) renderPlaylistDetailPage(id);
+      });
+      el.playerListChips.appendChild(newBtn);
+    }
 
     // Versions tab
     el.playerVersionsList.innerHTML='';
@@ -1163,6 +1177,14 @@
       shareTrack(state.playingTrack,state.playingGroup);
     });
   }
+  
+  const miniBtnShare = $('mini-btn-share');
+  if(miniBtnShare) {
+    miniBtnShare.addEventListener('click', () => {
+      if(!state.playingTrack) return;
+      shareTrack(state.playingTrack, state.playingGroup);
+    });
+  }
 
   // ── Favourite from player ──────────────────
   el.playerFavBtn.addEventListener('click',()=>{
@@ -1264,14 +1286,7 @@
     createPlaylist(name.trim());renderPlaylistsPage();
   });
   $('playlist-detail-back-btn').addEventListener('click',goBackToPlaylistsList);
-  
   $('playlist-play-all-btn').addEventListener('click',()=>{if(state.openPlaylistId)playFromPlaylist(state.openPlaylistId,null);});
-  
-  // Note: pl-mini buttons were removed in the UI overhaul in favor of the universal floating bar.
-  if($('pl-mini-prev')) $('pl-mini-prev').addEventListener('click',playPrev);
-  if($('pl-mini-next')) $('pl-mini-next').addEventListener('click',playNext);
-  if($('pl-mini-play')) $('pl-mini-play').addEventListener('click',togglePlayPause);
-  if($('pl-mini-expand-btn')) $('pl-mini-expand-btn').addEventListener('click',()=>{closePlaylistDetailPage();setPlayerExpanded(true);});
 
   document.addEventListener('click',()=>{
     document.querySelectorAll('.pl-ver-opts.open').forEach(o=>o.classList.remove('open'));
@@ -1301,7 +1316,7 @@
     audio.src=track.file;audio.loop=state.looping;
     audio.play().catch(()=>{});
     updatePlayerBar(track,state.playingGroup);refreshPlayingState();
-    updateMediaSession(track);updateEmbeddedPlayer();
+    updateMediaSession(track);
     renderQueueTab();
     if(state.openPlaylistId){
       setTimeout(()=>{
@@ -1348,10 +1363,10 @@
     if(state.shuffleQueue.length){const f=state.shuffleQueue.shift();playTrack(f,findGroup(f));}
   }
 
-  audio.addEventListener('play',()=>{state.isPlaying=true;setPlayPauseUI(true);updateEmbeddedPlayer();});
-  audio.addEventListener('pause',()=>{state.isPlaying=false;setPlayPauseUI(false);updateEmbeddedPlayer();});
+  audio.addEventListener('play',()=>{state.isPlaying=true;setPlayPauseUI(true);});
+  audio.addEventListener('pause',()=>{state.isPlaying=false;setPlayPauseUI(false);});
   audio.addEventListener('ended',()=>{state.isPlaying=false;setPlayPauseUI(false);updateProgress();if(!state.looping)playNext();});
-  audio.addEventListener('timeupdate',()=>{updateProgress();updateMediaPosition();updateEmbeddedPlayer();});
+  audio.addEventListener('timeupdate',()=>{updateProgress();updateMediaPosition();});
   audio.addEventListener('loadedmetadata',()=>{updateProgress();updateMediaPosition();});
 
   el.miniBtnPlay.addEventListener('click',togglePlayPause);
