@@ -1127,13 +1127,15 @@
   document.addEventListener('mouseup',commitScrub);document.addEventListener('touchend',commitScrub);
 
   // ── Volume ─────────────────────────────────
-  function setVolume(v){v=Math.max(0,Math.min(1,v));audio.volume=v;el.playerVolume.value=v;el.volPct.textContent=Math.round(v*100)+'%';}
+  const miniVolSlider=$('mini-vol-slider');
+  function setVolume(v){v=Math.max(0,Math.min(1,v));audio.volume=v;el.playerVolume.value=v;el.volPct.textContent=Math.round(v*100)+'%';if(miniVolSlider)miniVolSlider.value=v;}
   el.playerVolume.addEventListener('input',()=>setVolume(parseFloat(el.playerVolume.value)));
+  if(miniVolSlider)miniVolSlider.addEventListener('input',()=>setVolume(parseFloat(miniVolSlider.value)));
   $('vol-down').addEventListener('click',()=>setVolume(audio.volume-0.1));
   $('vol-up').addEventListener('click',()=>setVolume(audio.volume+0.1));
 
   // ── Loop ───────────────────────────────────
-  el.btnLoop.addEventListener('click',()=>{state.looping=!state.looping;audio.loop=state.looping;el.btnLoop.classList.toggle('active',state.looping);});
+  el.btnLoop.addEventListener('click',()=>{state.looping=!state.looping;audio.loop=state.looping;el.btnLoop.classList.toggle('active',state.looping);if(el.deskBtnLoop)el.deskBtnLoop.classList.toggle('active',state.looping);});
 
   // ── Notes ──────────────────────────────────
   el.playerNote.addEventListener('input',()=>{if(!state.playingTrack)return;scheduleNoteSave(state.playingTrack.filename,el.playerNote.value);});
@@ -1356,7 +1358,7 @@
   if(el.deskBtnPlay){el.deskBtnPlay.addEventListener('click',togglePlayPause);}
   if(el.deskBtnPrev){el.deskBtnPrev.addEventListener('click',playPrev);}
   if(el.deskBtnNext){el.deskBtnNext.addEventListener('click',playNext);}
-  if(el.deskBtnLoop){el.deskBtnLoop.addEventListener('click',()=>{$('btn-loop')&&$('btn-loop').click();el.deskBtnLoop.classList.toggle('active',state.looping);});}
+  if(el.deskBtnLoop){el.deskBtnLoop.addEventListener('click',()=>{state.looping=!state.looping;audio.loop=state.looping;el.btnLoop.classList.toggle('active',state.looping);el.deskBtnLoop.classList.toggle('active',state.looping);});}
   // Desktop scrubber
   if(el.deskProgressTrack){
     function getDeskScrubPct(e){const r=el.deskProgressTrack.getBoundingClientRect();const cx=e.touches?e.touches[0].clientX:e.clientX;return Math.max(0,Math.min(1,(cx-r.left)/r.width));}

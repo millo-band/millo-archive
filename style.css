@@ -317,174 +317,169 @@ body.player-expanded #player-bar {
 }
 
 /* ══════════════════════════════════════════════
-   DESKTOP PLAYER — floating bar + slide-up panel
+   DESKTOP PLAYER
    ══════════════════════════════════════════════ */
 @media (min-width: 768px) {
 
-  /* ── Floating bar (mini) ── */
+  /* ── Floating bar shell ── */
   #player-bar {
     left: 50%;
     right: auto;
     bottom: 20px;
     transform: translateX(-50%);
-    width: min(1020px, calc(100vw - 48px));
+    width: min(1020px, calc(100vw - 40px));
     height: 80px;
     border: 2px solid var(--black);
-    border-top: 2px solid var(--black);
     box-shadow: 6px 6px 0 var(--black);
-    overflow: visible;
+    overflow: visible; /* allow panel to slide up above */
     transition: none;
   }
+  body.player-expanded #player-bar { overflow: visible; }
 
-  /* ── Expanded: slide up from the bar ── */
-  body.player-expanded #player-bar {
-    bottom: 20px;
-    height: 80px; /* bar stays, panel appears above */
-    overflow: visible;
-  }
+  /* ── Hide handle / mobile structure ── */
+  .player-handle-row { display: none; }
+  .player-mini-prog  { display: none; }
+  .mobile-only-ctrl  { display: none !important; }
 
-  /* ── Slide-up panel sits above the bar ── */
-  body.player-expanded .player-full {
-    position: absolute;
-    bottom: calc(100% - 2px); /* attach flush to top of bar */
-    left: -2px; right: -2px;
-    height: min(600px, calc(100dvh - 160px));
-    background: var(--pink);
-    border: 2px solid var(--black);
-    border-bottom: none;
-    box-shadow: 6px 0 0 var(--black), -6px 0 0 transparent, 0 -6px 0 var(--black);
-    overflow-y: auto;
-    overflow-x: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* ── Desktop mini row: all controls in one line ── */
+  /* ── Mini strip becomes the full bar ── */
   .player-mini {
     display: flex;
     flex-direction: row;
-    align-items: center;
-    padding: 0;
+    align-items: stretch;
     height: 80px;
-    gap: 0;
+    padding: 0;
+    width: 100%;
   }
-  .player-mini-prog {
-    display: none; /* scrubber is in the bar row on desktop */
-  }
-  .player-mini-row {
-    display: contents; /* dissolve grid, children flow into flex parent */
-  }
+  .player-mini-row { display: contents; }
 
-  /* ── Desktop mini: track info block ── */
+  /* ZONE 1 — art + info (left, fixed width, clickable to expand) */
   .player-mini-info {
-    width: 260px;
+    width: 240px;
     flex-shrink: 0;
-    padding: 0 16px;
-    border-right: var(--border);
-    height: 100%;
     display: flex;
     align-items: center;
     gap: 10px;
+    padding: 0 14px;
+    border-right: var(--border);
     cursor: pointer;
+    overflow: hidden;
   }
   .mini-art-canvas {
     display: block;
-    width: 46px; height: 46px;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
   }
-  .player-mini-text-block {
-    min-width: 0; flex: 1;
-  }
-  .player-title {
-    font-size: 11px;
-  }
+  .player-mini-text-block { min-width: 0; flex: 1; }
+  .player-title { font-size: 11px; }
 
-  /* ── Hide mobile-only controls on desktop ── */
-  .mobile-only-ctrl { display: none !important; }
-
-  /* ── Desktop mini: scrubber center zone ── */
+  /* ZONE 2 — transport + scrubber (center, grows) */
   .desktop-scrub-zone {
     flex: 1;
     display: flex;
     flex-direction: column;
+    align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 0 20px;
-    border-right: var(--border);
-    height: 100%;
+    gap: 5px;
+    padding: 0 16px;
   }
   .desktop-scrub-controls {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
   }
   .desktop-scrub-track-wrap {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    width: 100%;
   }
   .desktop-time {
+    font-family: 'IBM Plex Mono', monospace;
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.04em;
-    opacity: 0.5;
+    opacity: 0.45;
     flex-shrink: 0;
-    min-width: 32px;
-    font-family: 'IBM Plex Mono', monospace;
+    min-width: 30px;
   }
   .desktop-time.right { text-align: right; }
+  .desktop-scrub-track-wrap .player-progress-track { flex: 1; }
 
-  /* ── Desktop mini: right utility zone ── */
+  /* Transport buttons in the desktop scrub zone */
+  .desktop-scrub-zone .mini-ctrl {
+    width: 34px; height: 34px;
+  }
+  .desktop-scrub-zone .mini-play {
+    width: 46px; height: 46px;
+  }
+
+  /* ZONE 3 — utilities (right, fixed width) */
   .player-mini-controls {
+    width: 200px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 6px;
-    padding: 0 16px;
+    padding: 0 14px;
     border-left: var(--border);
-    height: 100%;
   }
+  /* vol slider in the controls zone */
+  .player-mini-controls .vol-slider { flex: 1; min-width: 0; }
+  .player-mini-controls .vol-pct    { display: none; } /* save space */
 
-  /* ── Expanded panel: hide handle row on desktop ── */
-  .player-handle-row { display: none; }
-
-  /* ── Expanded panel: hide redundant mini controls ── */
-  body.player-expanded .player-mini { display: flex; } /* keep the bar */
-
-  /* ── player-full default hidden on desktop ── */
+  /* ── Expanded panel: slide up above bar ── */
   .player-full {
     position: absolute;
-    bottom: calc(100% - 2px);
-    left: -2px; right: -2px;
-    height: min(600px, calc(100dvh - 160px));
+    bottom: calc(100% + 0px);
+    left: -2px;
+    right: -2px;
+    height: min(580px, calc(100dvh - 140px));
     background: var(--pink);
     border: 2px solid var(--black);
     border-bottom: none;
+    box-shadow: 6px -4px 0 var(--black);
     overflow-y: auto;
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
     opacity: 0;
     pointer-events: none;
-    transform: translateY(20px);
-    transition: opacity 0.22s, transform 0.22s cubic-bezier(0.32,0,0.15,1);
+    transform: translateY(16px);
+    transition: opacity 0.2s, transform 0.2s cubic-bezier(0.32,0,0.15,1);
   }
   body.player-expanded .player-full {
     opacity: 1;
     pointer-events: all;
     transform: translateY(0);
-    transition: opacity 0.22s 0.04s, transform 0.22s 0.04s cubic-bezier(0.32,0,0.15,1);
   }
-
-  /* ── Close btn visible on desktop expanded ── */
-  .player-close-btn { opacity: 0.35; pointer-events: all; }
-  .player-close-btn:hover { opacity: 1; }
 
   /* ── Backdrop ── */
   body.player-expanded .player-backdrop {
     display: block;
     position: fixed; inset: 0; z-index: 599;
-    background: rgba(0,0,0,0.22);
+    background: rgba(0,0,0,0.2);
+  }
+
+  /* ── Close btn in expanded panel ── */
+  .player-close-btn { opacity: 0; pointer-events: none; }
+  .player-desktop-close-x { opacity: 0.4; pointer-events: all; }
+  .player-desktop-close-x:hover { opacity: 1; }
+
+  /* ── Zone 3 button sizing ── */
+  .player-mini-controls .mini-ctrl { width: 30px; height: 30px; box-shadow: none; }
+  .player-mini-controls .pctrl-loop  { opacity: 0.3; }
+  .player-mini-controls .pctrl-loop.active { opacity: 1; background: var(--black); color: var(--pink); }
+  .player-mini-controls .pctrl-download { opacity: 0.4; }
+  .player-mini-controls .pctrl-download:hover { opacity: 1; }
+
+  /* Vol slider in zone 3 */
+  .player-mini-controls .vol-slider {
+    flex: 1;
+    min-width: 0;
+    max-width: 80px;
   }
 }
 
