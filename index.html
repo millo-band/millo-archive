@@ -108,13 +108,10 @@
     <div id="tracks-grid"></div>
   </main>
 
-  <!-- ══ PLAYER BACKDROP ═══════════════════════════════════════════ -->
   <div id="player-backdrop" class="player-backdrop"></div>
 
-  <!-- ══ UNIVERSAL FLOATING PLAYER ═════════════════════════════════ -->
   <div id="player-bar">
     
-    <!-- HANDLE -->
     <div class="player-handle-row">
       <button class="player-handle-btn" id="player-toggle-btn" aria-label="Toggle player">
         <div class="player-handle-notch"></div>
@@ -122,7 +119,6 @@
       <button class="player-close-btn" id="player-close-btn" aria-label="Close player">✕</button>
     </div>
 
-    <!-- MINI STRIP (Now comes first logically) -->
     <div class="player-mini" id="player-expand-btn">
       <div class="player-mini-prog">
         <div class="player-mini-prog-fill" id="player-mini-fill"></div>
@@ -186,14 +182,12 @@
       </div>
     </div>
 
-    <!-- EXPANDED CONTENT -->
     <div class="player-full" id="player-full">
       <div class="player-desktop-close-row">
         <span class="player-desktop-panel-label">NOW PLAYING</span>
         <button class="player-close-btn player-desktop-close-x" id="player-close-btn2" aria-label="Close">✕</button>
       </div>
 
-      <!-- Art + Track info -->
       <div class="player-top-row">
         <canvas id="player-art-canvas" class="player-art-canvas" width="64" height="64"></canvas>
         <div class="player-track-info">
@@ -215,7 +209,6 @@
         </div>
       </div>
 
-      <!-- Scrub bar -->
       <div class="player-scrub-section">
         <div class="player-progress-track" id="player-progress-track">
           <div class="player-progress-fill" id="player-progress-fill"></div>
@@ -227,7 +220,6 @@
         </div>
       </div>
 
-      <!-- Main controls -->
       <div class="player-controls-main">
         <button class="pctrl-btn pctrl-loop" id="btn-loop" aria-label="Loop">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 10a6 6 0 1 0 1.5-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/><polyline points="1,4 3.5,6.5 6,4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"/></svg>
@@ -247,7 +239,6 @@
         </a>
       </div>
 
-      <!-- Tag editor + List editor + Volume -->
       <div class="player-utilities">
         <div class="player-tag-row" id="player-tag-row">
           <span class="util-label">TAG</span>
@@ -269,7 +260,6 @@
         </div>
       </div>
 
-      <!-- Notes + Versions (tabbed) -->
       <div class="player-bottom-section">
         <div class="player-tabs" id="player-tabs">
           <button class="ptab active" data-tab="notes">NOTES</button>
@@ -293,7 +283,6 @@
     </div>
   </div>
 
-  <!-- ══ SONG PAGE OVERLAY ═══════════════════════════════════════════ -->
   <div id="song-page" class="overlay-page" style="display:none">
     <div class="overlay-header">
       <button class="overlay-back-btn" id="song-back-btn">
@@ -309,7 +298,6 @@
     <div class="overlay-body" id="song-page-body"></div>
   </div>
 
-  <!-- ══ LISTS OVERLAY ══════════════════════════════════════ -->
   <div id="playlists-page" class="overlay-page" style="display:none">
     <div class="overlay-header">
       <button class="overlay-back-btn" id="playlists-back-btn">
@@ -322,7 +310,6 @@
     <div class="overlay-body" id="playlists-body"></div>
   </div>
 
-  <!-- ══ LIST DETAIL OVERLAY (New Album Layout) ════════════════════════════════════ -->
   <div id="playlist-detail-page" class="overlay-page" style="display:none">
     <div class="overlay-header">
       <button class="overlay-back-btn" id="playlist-detail-back-btn">
@@ -333,7 +320,6 @@
     </div>
     
     <div class="pl-two-column">
-      <!-- Left Column: Art, Title, Stats, Play Button -->
       <div class="pl-col-left">
         <div class="pl-col-left-inner">
           <canvas id="pl-detail-canvas" class="pl-detail-art" width="180" height="180"></canvas>
@@ -350,7 +336,6 @@
         </div>
       </div>
       
-      <!-- Right Column: Track Rows -->
       <div class="pl-col-right overlay-body" id="playlist-detail-body"></div>
     </div>
   </div>

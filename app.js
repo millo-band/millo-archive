@@ -1096,7 +1096,7 @@
 
     if(!track){
       if(artCanvas){const ctx=artCanvas.getContext('2d');ctx.fillStyle='#FF91AF';ctx.fillRect(0,0,64,64);}
-      if(miniCanvas){miniCanvas.style.display='none';}
+      if(miniCanvas){const ctx=miniCanvas.getContext('2d');ctx.fillStyle='#FF91AF';ctx.fillRect(0,0,64,64);}
       return;
     }
 
@@ -1105,7 +1105,6 @@
       track.artDataUrl=artCanvas.toDataURL('image/png');
     }
     if(miniCanvas){
-      miniCanvas.style.display='block';
       generatePixelArt('mini-art-canvas', track.title);
     }
   }
@@ -1161,7 +1160,15 @@
     document.body.classList.toggle('player-expanded',expanded);
   }
 
-  el.playerExpandBtn.addEventListener('click',()=>{if(state.playingTrack)setPlayerExpanded(!state.playerExpanded);});
+  // Bind the entire mini strip to expand, except when clicking a control button or slider
+  if (el.playerExpandBtn) {
+    el.playerExpandBtn.addEventListener('click', (e) => {
+      if (!state.playingTrack) return;
+      if (e.target.closest('.mini-ctrl') || e.target.closest('.desktop-scrub-zone') || e.target.tagName === 'INPUT') return;
+      setPlayerExpanded(!state.playerExpanded);
+    });
+  }
+
   $('player-close-btn').addEventListener('click',()=>setPlayerExpanded(false));
   if($('player-close-btn2'))$('player-close-btn2').addEventListener('click',()=>setPlayerExpanded(false));
 
