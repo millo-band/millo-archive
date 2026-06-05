@@ -86,33 +86,51 @@ export default {
   }
 };
 
-const NOISE    = new Set(['novox','nofx','instrumental','inst','mix','remix','mastered','stem','stems','loop','demo2']);
-const TAG_MAP  = { d:'demo', f:'finished', c:'complete', os:'idea' };
+const NOISE      = new Set(['novox','nofx','instrumental','inst','stem','stems','loop','demo2']);
+const TAG_MAP    = { d:'demo', f:'finished', c:'complete', os:'idea' };
 const STAGE_KEYS = new Set(Object.keys(TAG_MAP));
+
+// Label tokens that carry meaning — keep these as part of the label
+const MIX_TOKENS  = new Set(['mix','remix','master','mastered','rough','radio','edit','acappella','acap','acoustic','live','alt','final','bounce','export']);
+// Suffix pattern: mix/master type + optional person name  e.g. "mattymix3", "roughmix", "mastered"
+const LABEL_RE    = /^([a-z]+mix\d*|[a-z]*master(?:ed)?\d*|rough|radio\s*edit|alt|live|acoustic|bounce\d*|final\d*)$/i;
 
 function parseFilename(filename) {
   const name  = filename.replace(/\.[^.]+$/, '');
   const parts = name.split('-');
 
+  // Find stage tag (leftmost wins)
   const allTags = [];
   for (let i = 0; i < parts.length; i++) {
     const t = parts[i].toLowerCase();
     if (STAGE_KEYS.has(t)) allTags.push({ idx: i, stage: TAG_MAP[t] });
   }
-
   let stage  = null;
   let tagIdx = -1;
-  if (allTags.length > 0) {
-    tagIdx = allTags[0].idx;
-    stage  = allTags[0].stage;
-  }
+  if (allTags.length > 0) { tagIdx = allTags[0].idx; stage = allTags[0].stage; }
 
+  // Find version (first vN token)
   let version = null;
-  for (const p of parts) {
-    if (/^v\d+$/i.test(p)) { version = parseInt(p.slice(1), 10); break; }
+  let versionIdx = -1;
+  for (let i = 0; i < parts.length; i++) {
+    if (/^v\d+$/i.test(parts[i])) { version = parseInt(parts[i].slice(1), 10); versionIdx = i; break; }
   }
 
-  const titleParts = (tagIdx >= 0 ? parts.slice(0, tagIdx) : parts).filter(p => {
+  // Label = tokens after the version (or after stage if no version) that aren't pure noise
+  // e.g. "mattymix3", "roughmix", "mastered", "jd-v2-mattymix3" → label = "mattymix3"
+  const labelStart = versionIdx >= 0 ? versionIdx + 1 : (tagIdx >= 0 ? tagIdx + 1 : -1);
+  let label = null;
+  if (labelStart > 0 && labelStart < parts.length) {
+    const labelParts = parts.slice(labelStart).filter(p => {
+      const t = p.toLowerCase();
+      return !STAGE_KEYS.has(t) && !/^v\d+$/i.test(t) && !/^\d+(bpm)?$/.test(t);
+    });
+    if (labelParts.length > 0) label = labelParts.join('-');
+  }
+
+  // Title = parts before stage tag (excluding version, bpm, key, noise)
+  const cutoff = tagIdx >= 0 ? tagIdx : (versionIdx >= 0 ? versionIdx : parts.length);
+  const titleParts = parts.slice(0, cutoff).filter(p => {
     const t = p.toLowerCase();
     return (
       !/^v\d+$/i.test(t) &&
@@ -124,5 +142,5 @@ function parseFilename(filename) {
   });
 
   const title = titleParts.join(' ').trim() || filename;
-  return { title, stage: stage || 'idea', version };
+  return { title, stage: stage || 'idea', version, label: label || null };
 }
