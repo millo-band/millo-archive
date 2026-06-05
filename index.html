@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <title>MILLO — ARCHIVE</title>
 
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23FF91AF'/><rect x='4' y='6' width='4' height='20' fill='%23000'/><rect x='14' y='6' width='4' height='20' fill='%23000'/><rect x='24' y='6' width='4' height='20' fill='%23000'/><rect x='8' y='6' width='6' height='4' fill='%23000'/><rect x='18' y='6' width='6' height='4' fill='%23000'/><rect x='8' y='14' width='6' height='4' fill='%23000'/><rect x='18' y='14' width='6' height='4' fill='%23000'/></svg>">
+  <!-- Updated Verbatim Assets -->
+  <link rel="icon" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
   <meta property="og:title" content="MILLO — ARCHIVE" />
   <meta property="og:description" content="Personal music archive. Demos, ideas, finished tracks." />
-  <meta property="og:image" content="og-image.png" />
+  <meta property="og:image" content="og-image.jpg" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
 
@@ -111,9 +112,9 @@
   <!-- ══ PLAYER BACKDROP (desktop modal) ═══════════════════════════ -->
   <div id="player-backdrop" class="player-backdrop"></div>
 
-  <!-- ══ PLAYER ════════════════════════════════════════════════════════ -->
+  <!-- ══ UNIVERSAL FLOATING PLAYER ═════════════════════════════════ -->
   <div id="player-bar">
-
+    
     <!-- HANDLE — drag to expand on mobile, close on desktop -->
     <div class="player-handle-row">
       <button class="player-handle-btn" id="player-toggle-btn" aria-label="Toggle player">
@@ -122,10 +123,8 @@
       <button class="player-close-btn" id="player-close-btn" aria-label="Close player">✕</button>
     </div>
 
-    <!-- EXPANDED CONTENT — single column, all controls visible -->
+    <!-- EXPANDED CONTENT -->
     <div class="player-full" id="player-full">
-
-      <!-- Desktop close row (hidden on mobile via CSS) -->
       <div class="player-desktop-close-row">
         <span class="player-desktop-panel-label">NOW PLAYING</span>
         <button class="player-close-btn player-desktop-close-x" id="player-close-btn2" aria-label="Close">✕</button>
@@ -138,9 +137,9 @@
           <div class="player-track-title-row">
             <span class="player-title-lg" id="player-title-lg">SELECT A TRACK</span>
             <button class="player-fav-btn" id="player-fav-btn" aria-label="Favourite">★</button>
-          <button class="player-share-btn" id="player-share-btn" aria-label="Share" style="display:none">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="13" cy="3" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="3" cy="8" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="13" r="2" stroke="currentColor" stroke-width="1.8"/><line x1="5" y1="9" x2="11" y2="12" stroke="currentColor" stroke-width="1.8"/><line x1="11" y1="4" x2="5" y2="7" stroke="currentColor" stroke-width="1.8"/></svg>
-          </button>
+            <button class="player-share-btn" id="player-share-btn" aria-label="Share" style="display:none">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="13" cy="3" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="3" cy="8" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="13" r="2" stroke="currentColor" stroke-width="1.8"/><line x1="5" y1="9" x2="11" y2="12" stroke="currentColor" stroke-width="1.8"/><line x1="11" y1="4" x2="5" y2="7" stroke="currentColor" stroke-width="1.8"/></svg>
+            </button>
           </div>
           <div class="player-track-meta">
             <span class="player-stage-lg" id="player-stage-lg"></span>
@@ -224,18 +223,15 @@
           <div class="player-queue-list" id="player-queue-list"></div>
         </div>
       </div>
+    </div>
 
-    </div><!-- end .player-full -->
-
-    <!-- MINI STRIP — always visible -->
+    <!-- MINI STRIP -->
     <div class="player-mini">
-      <!-- Mobile: thin progress bar (hidden on desktop) -->
       <div class="player-mini-prog">
         <div class="player-mini-prog-fill" id="player-mini-fill"></div>
       </div>
       <div class="player-mini-row">
-
-        <!-- ZONE 1: Art + track info — click to expand -->
+        
         <div class="player-mini-info" id="player-expand-btn">
           <canvas id="mini-art-canvas" class="mini-art-canvas" width="64" height="64"></canvas>
           <div class="player-mini-text-block">
@@ -244,7 +240,6 @@
           </div>
         </div>
 
-        <!-- ZONE 2: Transport + scrubber (desktop only) -->
         <div class="desktop-scrub-zone">
           <div class="desktop-scrub-controls">
             <button class="mini-ctrl" id="mini-btn-prev2" aria-label="Previous">
@@ -268,9 +263,7 @@
           </div>
         </div>
 
-        <!-- ZONE 3: Loop + download + vol slider (desktop only) + mobile play controls -->
         <div class="player-mini-controls">
-          <!-- Desktop utilities -->
           <button class="mini-ctrl pctrl-loop" id="mini-btn-loop" aria-label="Loop" title="Loop">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 10a6 6 0 1 0 1.5-4" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><polyline points="1,4 3.5,6.5 6,4" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
           </button>
@@ -278,7 +271,7 @@
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="7" y1="1" x2="7" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><polyline points="4,7 7,10 10,7" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><polyline points="2,12 2,13 12,13 12,12" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
           </a>
           <input type="range" id="mini-vol-slider" class="vol-slider" min="0" max="1" step="0.05" value="1" title="Volume">
-          <!-- Mobile-only: prev / play / next -->
+          
           <button class="mini-ctrl mobile-only-ctrl" id="mini-btn-prev" aria-label="Previous">
             <svg width="14" height="14" viewBox="0 0 12 12"><polygon points="11,1 11,11 1,6" fill="#000"/><rect x="0" y="1" width="2" height="10" fill="#000"/></svg>
           </button>
@@ -290,12 +283,9 @@
             <svg width="14" height="14" viewBox="0 0 12 12"><polygon points="1,1 1,11 11,6" fill="#000"/><rect x="10" y="1" width="2" height="10" fill="#000"/></svg>
           </button>
         </div>
-
       </div>
     </div>
-
-  </div><!-- end #player-bar -->
-
+  </div>
 
   <!-- ══ SONG PAGE OVERLAY ═══════════════════════════════════════════ -->
   <div id="song-page" class="overlay-page" style="display:none">
@@ -345,29 +335,6 @@
       <span class="pl-stats-dur" id="playlist-stats-dur"></span>
     </div>
     <div class="overlay-body" id="playlist-detail-body"></div>
-
-    <!-- Embedded mini player at bottom of playlist -->
-    <div class="pl-mini-player" id="pl-mini-player">
-      <div class="pl-mini-prog"><div class="pl-mini-prog-fill" id="pl-mini-fill"></div></div>
-      <div class="pl-mini-row">
-        <div class="pl-mini-info" id="pl-mini-expand-btn">
-          <span class="pl-mini-title" id="pl-mini-title">— NOTHING PLAYING —</span>
-          <span class="pl-mini-stage" id="pl-mini-stage"></span>
-        </div>
-        <div class="pl-mini-controls">
-          <button class="pl-mini-btn" id="pl-mini-prev">
-            <svg width="13" height="13" viewBox="0 0 12 12"><polygon points="11,1 11,11 1,6" fill="currentColor"/><rect x="0" y="1" width="2" height="10" fill="currentColor"/></svg>
-          </button>
-          <button class="pl-mini-btn pl-mini-play-btn" id="pl-mini-play">
-            <svg id="pl-mini-icon-play" width="17" height="17" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>
-            <svg id="pl-mini-icon-pause" width="17" height="17" viewBox="0 0 16 16" style="display:none"><rect x="1" y="1" width="5" height="14" fill="currentColor"/><rect x="10" y="1" width="5" height="14" fill="currentColor"/></svg>
-          </button>
-          <button class="pl-mini-btn" id="pl-mini-next">
-            <svg width="13" height="13" viewBox="0 0 12 12"><polygon points="1,1 1,11 11,6" fill="currentColor"/><rect x="10" y="1" width="2" height="10" fill="currentColor"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <audio id="audio-player" preload="none"></audio>
