@@ -23,6 +23,17 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* ══ VISIBILITY UTILITIES ════════════════════ */
+.hide-on-mobile { display: none !important; }
+.show-on-mobile { display: flex !important; }
+
+@media (min-width: 768px) {
+  .hide-on-mobile.desktop-flex { display: flex !important; }
+  .hide-on-mobile.desktop-block { display: block !important; }
+  .show-on-mobile { display: none !important; }
+  .hide-on-desktop { display: none !important; }
+}
+
 /* ══ HEADER ══════════════════════════════════ */
 #site-header {
   position: fixed; top: 0; left: 0; right: 0; height: var(--header-h);
@@ -290,45 +301,44 @@ body.player-expanded .player-backdrop {
 #player-bar {
   position: fixed; 
   left: 14px; right: 14px; bottom: 16px;
-  height: var(--mini-h);
+  height: auto; min-height: 52px;
   background: var(--pink); border: var(--border);
-  z-index: 9999; overflow: hidden; 
+  z-index: 9999; overflow: visible; 
   display: flex; flex-direction: column;
   box-shadow: var(--shadow-lg);
-  transition: height 0.35s cubic-bezier(0.32, 0, 0.15, 1), transform 0.3s;
+  transition: transform 0.3s cubic-bezier(0.32, 0, 0.15, 1);
 }
 
 body.player-expanded #player-bar {
   height: calc(100dvh - var(--header-h) - 40px);
   transform: translateY(-8px);
+  overflow: hidden; /* Hide overflow when acting as full screen modal */
 }
 
 /* ── MOBILE STATE TOGGLES (DEFAULT) ── */
 
 .player-handle-row {
-  display: none; 
   position: relative; flex-shrink: 0; height: 28px;
   align-items: center; justify-content: center;
   cursor: grab; cursor: ns-resize;
   background: rgba(0,0,0,0.03); border-bottom: 1px solid var(--black);
   -webkit-tap-highlight-color: transparent;
+  display: none;
 }
 body.player-expanded .player-handle-row {
   display: flex;
 }
 
 .player-mini {
-  position: relative;
-  flex-shrink: 0; display: flex; flex-direction: column; cursor: pointer;
+  display: flex; flex-direction: column; flex-shrink: 0; cursor: pointer;
 }
 body.player-expanded .player-mini {
-  display: none; /* Completely removes the mini UI to prevent double controls and height conflicts */
+  display: none !important;
 }
 
 .player-full {
-  display: none; /* Completely hide when collapsed */
-  flex: 1; min-height: 0; flex-direction: column;
-  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  display: none;
+  flex: 1; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
 body.player-expanded .player-full {
   display: flex; 
@@ -345,12 +355,8 @@ body.player-expanded .player-full {
     transform: translateX(-50%) translateY(-12px);
   }
   
-  .player-handle-row, body.player-expanded .player-handle-row {
-    display: none !important;
-  }
-  
   .player-mini, body.player-expanded .player-mini {
-    display: flex; /* Always visible on desktop */
+    display: flex !important; /* Always visible on desktop */
   }
 
   .player-full, body.player-expanded .player-full {
@@ -653,19 +659,6 @@ body.player-expanded .player-close-btn:hover { opacity: 1; }
 .pctrl-share { opacity: 0.4; }
 .pctrl-share:hover { opacity: 1; }
 
-/* FIX: Ensure desktop controls are physically removed from layout on mobile */
-.player-mini-controls .pctrl-loop,
-.player-mini-controls .pctrl-download,
-.player-mini-controls .pctrl-share,
-.player-mini-controls .vol-slider {
-  display: none !important;
-}
-.player-mini-controls .mobile-only-ctrl {
-  display: flex !important;
-}
-
-/* Desktop scrub zone hidden on mobile */
-.desktop-scrub-zone { display: none; }
 @media (min-width: 768px) {
   .desktop-scrub-zone {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -677,19 +670,6 @@ body.player-expanded .player-close-btn:hover { opacity: 1; }
   .desktop-time.right { text-align: right; }
   .desktop-scrub-track-wrap .player-progress-track { flex: 1; }
 
-  /* Desktop controls become visible, mobile controls physically removed */
-  .player-mini-controls .mobile-only-ctrl {
-    display: none !important;
-  }
-  .player-mini-controls .pctrl-loop,
-  .player-mini-controls .pctrl-download,
-  .player-mini-controls .pctrl-share {
-    display: flex !important;
-  }
-  .player-mini-controls .vol-slider {
-    display: block !important;
-  }
-  
   .player-mini-controls { width: 220px; flex-shrink: 0; border-left: 1px solid var(--black); padding-left: 14px; justify-content: flex-end; }
   .player-mini-controls .mini-ctrl { width: 30px; height: 30px; box-shadow: none; }
   .player-mini-controls .pctrl-loop { opacity: 0.3; }
