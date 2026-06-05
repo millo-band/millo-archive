@@ -307,6 +307,21 @@ body.edit-mode .card-select-check { display: flex; }
   transition: height 0.4s cubic-bezier(0.32, 0, 0.15, 1);
 }
 
+/* Desktop: floating mini player */
+@media (min-width: 768px) {
+  #player-bar {
+    left: 50%;
+    right: auto;
+    bottom: 20px;
+    transform: translateX(-50%);
+    width: min(560px, calc(100vw - 48px));
+    height: var(--mini-h);
+    border: 2px solid var(--black);
+    border-radius: 0;
+    box-shadow: 6px 6px 0 var(--black);
+  }
+}
+
 /* Mobile: slide up to near-full-screen */
 body.player-expanded #player-bar {
   height: calc(100dvh - var(--header-h) - var(--controls-h) - var(--search-h) - var(--mass-edit-h));
@@ -775,6 +790,11 @@ body.player-expanded .player-full {
 /* ══ LIST DETAIL PAGE ════════════════════════ */
 #playlist-detail-page .overlay-body {
   padding-bottom: calc(72px + var(--safe-bottom) + 16px);
+}
+@media (min-width: 768px) {
+  #playlist-detail-page .overlay-body {
+    padding-bottom: calc(var(--mini-h) + 40px);
+  }
 }
 
 .pl-play-all-btn {
