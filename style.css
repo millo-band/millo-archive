@@ -97,12 +97,8 @@ html, body {
 .hide-on-mobile { display: none !important; }
 .show-on-mobile { display: flex !important; }
 
-@media (min-width: 768px) {
-  .hide-on-mobile.desktop-flex { display: flex !important; }
-  .hide-on-mobile.desktop-block { display: block !important; }
-  .show-on-mobile { display: none !important; }
-  .hide-on-desktop { display: none !important; }
-}
+/* Desktop intentionally mirrors mobile — utility classes are NOT flipped,
+   so the player renders the identical single-column layout at all widths. */
 
 /* ══ HEADER ══════════════════════════════════ */
 #site-header {
@@ -428,32 +424,23 @@ body.player-expanded .player-full {
   display: flex; 
 }
 
-/* Desktop Overrides */
+/* ── DESKTOP: same single-column layout as mobile, centered at phone width ── */
 @media (min-width: 768px) {
+  /* Collapsed floating bar: centered, capped at a phone width */
   #player-bar {
     left: 50%; right: auto; bottom: 24px;
     transform: translateX(-50%);
-    width: min(1140px, calc(100vw - 40px));
+    width: min(440px, calc(100vw - 40px));
   }
-  body.player-expanded #player-bar { 
-    transform: translateX(-50%) translateY(-12px);
-  }
-  
-  .player-mini, body.player-expanded .player-mini {
-    display: flex !important; /* Always visible on desktop */
-  }
-
-  .player-full, body.player-expanded .player-full {
-    display: flex; position: absolute; bottom: 100%; left: -2px; right: -2px;
-    height: min(640px, calc(100dvh - 120px));
-    border: 2px solid var(--black); border-bottom: none;
-    background: var(--pink); box-shadow: 6px -4px 0 var(--black);
-    opacity: 0; pointer-events: none;
-    transform: translateY(16px);
-    transition: opacity 0.2s, transform 0.2s;
-  }
-  body.player-expanded .player-full {
-    opacity: 1; pointer-events: all; transform: translateY(0);
+  /* Expanded: full-height centered phone-width column (mirrors mobile full screen) */
+  body.player-expanded #player-bar {
+    left: 50%; right: auto; top: 0; bottom: 0;
+    width: min(440px, 100vw);
+    height: 100dvh; min-height: 100dvh;
+    transform: translateX(-50%);
+    border-left: var(--border); border-right: var(--border);
+    border-top: none; border-bottom: none;
+    box-shadow: 0 0 0 100vmax rgba(0,0,0,0.35);
   }
 }
 
@@ -478,33 +465,8 @@ body.player-expanded .player-handle-notch { opacity: 0.35; width: 32px; }
 body.player-expanded .player-close-btn { opacity: 0.4; pointer-events: all; }
 body.player-expanded .player-close-btn:hover { opacity: 1; }
 
+/* Desktop close-row removed — desktop uses the same handle/close row as mobile. */
 .player-desktop-close-row { display: none; }
-@media (min-width: 768px) {
-  .player-desktop-close-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 18px;
-    height: 40px;
-    border-bottom: 1px solid var(--black);
-    flex-shrink: 0;
-    background: rgba(var(--ink-rgb),0.03);
-  }
-  .player-desktop-panel-label {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 6px;
-    letter-spacing: 0.18em;
-    opacity: 0.4;
-  }
-  .player-desktop-close-x {
-    position: static;
-    opacity: 0.4;
-    pointer-events: all;
-    font-size: 16px;
-    padding: 0 4px;
-  }
-  .player-desktop-close-x:hover { opacity: 1; }
-}
 
 /* ── ART + TRACK INFO ROW ─────────────────── */
 .player-top-row {
@@ -667,29 +629,6 @@ body.player-expanded .player-close-btn:hover { opacity: 1; }
 .ptab-panel { display: none; flex: 1; min-height: 0; }
 .ptab-panel.active { display: flex; flex-direction: column; }
 
-/* ── DESKTOP: reveal Notes / Versions / Queue all at once ── */
-@media (min-width: 768px) {
-  .player-tabs { display: none; }
-  .player-bottom-section { flex-direction: row; }
-  .ptab-panel,
-  .ptab-panel.active {
-    display: flex !important; flex-direction: column;
-    flex: 1 1 0; min-width: 0; min-height: 0;
-    border-right: 1px solid var(--black);
-    overflow-y: auto;
-  }
-  .ptab-panel:last-child { border-right: none; }
-  .ptab-panel::before {
-    content: attr(data-label);
-    font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: 0.18em;
-    opacity: 0.4; padding: 10px 14px 8px; flex-shrink: 0;
-    position: sticky; top: 0; background: var(--pink); z-index: 1;
-    border-bottom: 1px solid rgba(var(--ink-rgb),0.12);
-  }
-  /* Notes textarea must not collapse inside the column */
-  #tab-notes .player-note { min-height: 120px; }
-}
-
 .player-note {
   resize: none; background: none; border: none; outline: none;
   font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.75;
@@ -732,9 +671,6 @@ body.player-expanded .player-close-btn:hover { opacity: 1; }
   align-items: center; justify-content: space-between; gap: 10px; padding: 0 14px;
   height: 49px;
 }
-@media (min-width: 768px) {
-  .player-mini-row { height: 77px; }
-}
 
 .player-mini-info {
   min-width: 0; flex: 1; -webkit-tap-highlight-color: transparent;
@@ -747,10 +683,6 @@ body.player-expanded .player-close-btn:hover { opacity: 1; }
   border: 1px solid var(--black);
   background: var(--pink);
   display: none;
-}
-@media (min-width: 768px) {
-  .mini-art-canvas { display: block; width: 48px; height: 48px; }
-  .player-mini-info { width: 240px; flex: none; border-right: 1px solid var(--black); }
 }
 
 .player-mini-text-block { 
@@ -780,27 +712,6 @@ body.player-expanded .player-close-btn:hover { opacity: 1; }
 .pctrl-share { opacity: 0.4; }
 .pctrl-share:hover { opacity: 1; }
 
-@media (min-width: 768px) {
-  .desktop-scrub-zone {
-    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 5px; padding: 0 16px;
-  }
-  .desktop-scrub-controls { display: flex; align-items: center; gap: 6px; }
-  .desktop-scrub-track-wrap { display: flex; align-items: center; gap: 8px; width: 100%; }
-  .desktop-time { font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; opacity: 0.45; flex-shrink: 0; min-width: 30px; }
-  .desktop-time.right { text-align: right; }
-  .desktop-scrub-track-wrap .player-progress-track { flex: 1; }
-
-  .player-mini-controls { width: 220px; flex-shrink: 0; border-left: 1px solid var(--black); padding-left: 14px; justify-content: flex-end; }
-  .player-mini-controls .mini-ctrl { width: 30px; height: 30px; box-shadow: none; }
-  .player-mini-controls .pctrl-loop { opacity: 0.3; }
-  .player-mini-controls .pctrl-download { opacity: 0.4; }
-  .player-mini-controls .pctrl-download:hover { opacity: 1; }
-  .pctrl-share { opacity: 0.4; }
-  .pctrl-share:hover { opacity: 1; }
-  .player-mini-controls .vol-slider { flex: 1; min-width: 0; max-width: 70px; }
-  .player-mini-prog { display: none; }
-}
 
 /* ══ VIEW SONG BUTTON ════════════════════════ */
 .view-song-btn {
