@@ -343,82 +343,111 @@
     history.pushState({},'',url.toString());
   }
 
+  const SHARE_SVG=`<svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="13" cy="3" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="3" cy="8" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="13" r="2" stroke="currentColor" stroke-width="1.8"/><line x1="5" y1="9" x2="11" y2="12" stroke="currentColor" stroke-width="1.8"/><line x1="11" y1="4" x2="5" y2="7" stroke="currentColor" stroke-width="1.8"/></svg>`;
+  const PLAY_SVG=`<svg width="13" height="13" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>`;
+  const PAUSE_SVG=`<svg width="13" height="13" viewBox="0 0 16 16"><rect x="2" y="1" width="4" height="14" fill="currentColor"/><rect x="10" y="1" width="4" height="14" fill="currentColor"/></svg>`;
+
+  // Debounced per-version note save (independent of the player note field)
+  function saveVersionNote(filename,text,statusEl){
+    if(!filename)return;
+    clearTimeout(statusEl._t);
+    statusEl.textContent='…';
+    statusEl._t=setTimeout(async()=>{
+      try{
+        await fetch(WORKER_URL+'/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename,note:text})});
+        if(text.trim())notes[filename]=text.trim(); else delete notes[filename];
+        statusEl.textContent='SAVED';
+        if(state.playingTrack&&state.playingTrack.filename===filename&&el.playerNote)el.playerNote.value=text;
+        setTimeout(()=>{statusEl.textContent='';},1500);
+      }catch{statusEl.textContent='ERROR';}
+    },700);
+  }
+
+  function refreshSongPagePlaying(){
+    if(!el.songPage||el.songPage.style.display==='none')return;
+    const idx=state.playingTrack?state.playingTrack._idx:-1;
+    el.songPageBody.querySelectorAll('.sp-ver-row').forEach(row=>{
+      const active=parseInt(row.dataset.trackIdx)===idx;
+      row.classList.toggle('sp-playing',active);
+      const pb=row.querySelector('.sp-ver-play');
+      if(pb)pb.innerHTML=(active&&state.isPlaying)?PAUSE_SVG:PLAY_SVG;
+    });
+  }
+
   function renderSongPage(group){
     el.songPageTitle.textContent=group.title.toUpperCase();
     el.songPageBody.innerHTML='';
 
     const sorted=[...group.tracks].sort((a,b)=>(b.uploaded||'')>(a.uploaded||'')?1:-1);
-    const latest=sorted[0];
-
-    const heroSec=document.createElement('div');heroSec.className='sp-section';
-    const heroLbl=document.createElement('div');heroLbl.className='sp-section-label';heroLbl.textContent='LATEST VERSION';
-    heroSec.appendChild(heroLbl);
-
-    const hero=document.createElement('div');hero.className='sp-hero';
-    const heroTop=document.createElement('div');heroTop.className='sp-hero-top';
-
-    const playBtn=document.createElement('button');playBtn.className='sp-play-btn';
-    playBtn.innerHTML=`<svg width="22" height="22" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>`;
-    playBtn.addEventListener('click',()=>{playTrack(latest,group);closeSongPage();});
-    heroTop.appendChild(playBtn);
-
-    const heroMeta=document.createElement('div');heroMeta.className='sp-hero-meta';
-    if(latest.stage){const pill=document.createElement('span');pill.className='sp-stage-pill';pill.textContent=TAG_FULL[latest.stage]||latest.stage;heroMeta.appendChild(pill);}
-    if(latest.version||latest.label){
-      const ver=document.createElement('span');ver.className='sp-hero-ver';
-      ver.textContent=(latest.version?`v${latest.version}`:'')+(latest.label?` · ${latest.label}`:'');
-      heroMeta.appendChild(ver);
-    }
-    const heroDate=document.createElement('span');heroDate.className='sp-hero-date';heroDate.textContent=fmtDate(latest.uploaded);heroMeta.appendChild(heroDate);
-    const heroDur=document.createElement('span');heroDur.className='sp-hero-dur';heroDur.dataset.trackIdx=latest._idx;heroMeta.appendChild(heroDur);
-    heroTop.appendChild(heroMeta);
-    hero.appendChild(heroTop);
-
-    const heroNote=document.createElement('div');
-    heroNote.className='sp-hero-note'+(notes[latest.filename]?'':' empty');
-    heroNote.textContent=notes[latest.filename]||'No note yet.';
-    hero.appendChild(heroNote);
-    heroSec.appendChild(hero);
-    el.songPageBody.appendChild(heroSec);
 
     const versSec=document.createElement('div');versSec.className='sp-section';
     const versLbl=document.createElement('div');versLbl.className='sp-section-label';
-    versLbl.textContent=`ALL VERSIONS — ${sorted.length}`;versSec.appendChild(versLbl);
+    versLbl.textContent=`VERSION TIMELINE — ${sorted.length}`;versSec.appendChild(versLbl);
+
+    const timeline=document.createElement('div');timeline.className='sp-timeline';
 
     sorted.forEach((track,i)=>{
       const row=document.createElement('div');
-      row.className='sp-ver-row'+(i===0?' sp-ver-latest':'');
+      row.className='sp-ver-row';
       row.dataset.trackIdx=track._idx;
+      row.dataset.filename=track.filename||'';
 
       const rowTop=document.createElement('div');rowTop.className='sp-ver-row-top';
+
+      const playBtn=document.createElement('button');playBtn.className='sp-ver-play';playBtn.setAttribute('aria-label','Play version');
+      playBtn.innerHTML=PLAY_SVG;
+      playBtn.addEventListener('click',e=>{
+        e.stopPropagation();
+        const isCur=state.playingTrack&&state.playingTrack._idx===track._idx;
+        if(isCur){ state.isPlaying?audio.pause():audio.play().catch(()=>{}); }
+        else { playTrack(track,group); }   // stays on this page
+        refreshSongPagePlaying();
+      });
+      rowTop.appendChild(playBtn);
+
       const stagePill=document.createElement('span');stagePill.className='sp-stage-pill sp-stage-sm';
       stagePill.textContent=TAG_LABEL[track.stage]||'?';rowTop.appendChild(stagePill);
-      if(track.version||track.label){
-        const ver=document.createElement('span');ver.className='sp-ver-label';
-        ver.textContent=(track.version?`v${track.version}`:'')+(track.label?` · ${track.label}`:'');
-        rowTop.appendChild(ver);
-      }
-      const date=document.createElement('span');date.className='sp-ver-date';date.textContent=fmtDate(track.uploaded);rowTop.appendChild(date);
+
+      const ver=document.createElement('span');ver.className='sp-ver-label';
+      ver.textContent=(track.version?`v${track.version}`:'—')+(track.label?` · ${track.label}`:'');
+      rowTop.appendChild(ver);
+
+      const date=document.createElement('span');date.className='sp-ver-date';date.textContent=fmtDate(track.uploaded)||'—';rowTop.appendChild(date);
+
       const sp=document.createElement('span');sp.style.flex='1';rowTop.appendChild(sp);
       if(i===0){const lb=document.createElement('span');lb.className='sp-latest-badge';lb.textContent='LATEST';rowTop.appendChild(lb);}
       const dur=document.createElement('span');dur.className='sp-ver-dur';dur.dataset.trackIdx=track._idx;rowTop.appendChild(dur);
+
       const shareBtn=document.createElement('button');shareBtn.className='sp-ver-share-btn';shareBtn.setAttribute('aria-label','Share version');
-      shareBtn.innerHTML=`<svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="13" cy="3" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="3" cy="8" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="13" r="2" stroke="currentColor" stroke-width="1.8"/><line x1="5" y1="9" x2="11" y2="12" stroke="currentColor" stroke-width="1.8"/><line x1="11" y1="4" x2="5" y2="7" stroke="currentColor" stroke-width="1.8"/></svg>`;
+      shareBtn.innerHTML=SHARE_SVG;
       shareBtn.addEventListener('click',e=>{e.stopPropagation();shareTrack(track,group);});
       rowTop.appendChild(shareBtn);
       row.appendChild(rowTop);
 
-      const noteEl=document.createElement('div');
-      noteEl.className='sp-ver-note'+(notes[track.filename]?'':' empty');
-      noteEl.textContent=notes[track.filename]||'No note.';
-      row.appendChild(noteEl);
+      if(track.filename){
+        const fn=document.createElement('div');fn.className='sp-ver-filename';fn.textContent=track.filename;row.appendChild(fn);
+      }
 
-      row.addEventListener('click',()=>{playTrack(track,group);closeSongPage();});
-      versSec.appendChild(row);
+      const noteWrap=document.createElement('div');noteWrap.className='sp-ver-note-wrap';
+      const note=document.createElement('textarea');note.className='sp-ver-note-input';
+      note.placeholder='Add a note for this version…';
+      note.value=notes[track.filename]||'';
+      note.rows=2;
+      const status=document.createElement('span');status.className='sp-ver-note-status';
+      note.addEventListener('input',()=>saveVersionNote(track.filename,note.value,status));
+      note.addEventListener('click',e=>e.stopPropagation());
+      noteWrap.appendChild(note);noteWrap.appendChild(status);
+      row.appendChild(noteWrap);
+
+      timeline.appendChild(row);
     });
+
+    versSec.appendChild(timeline);
     el.songPageBody.appendChild(versSec);
 
     renderSongPagePlaylists(group);
+    fillDurations(el.songPageBody);
+    refreshSongPagePlaying();
   }
 
   function renderSongPagePlaylists(group){
@@ -883,17 +912,23 @@
     document.querySelectorAll('.sp-ver-row').forEach(row=>row.classList.toggle('sp-playing',parseInt(row.dataset.trackIdx)===idx));
   }
 
+  const durCache={};
+  const DUR_CLASSES=['card-duration','voice-row-dur','pver-row-dur','sp-ver-dur','sp-hero-dur','pl-ver-opt-dur'];
+  function applyDurToNode(node,dur){ if(DUR_CLASSES.some(c=>node.classList.contains(c)))node.textContent=dur; }
+  function fillDurations(root){
+    (root||document).querySelectorAll('[data-track-idx]').forEach(node=>{
+      const d=durCache[node.dataset.trackIdx];
+      if(d)applyDurToNode(node,d);
+    });
+  }
   function loadAllDurations(tracks){
     tracks.forEach(t=>{
+      if(durCache[t._idx]){ document.querySelectorAll(`[data-track-idx="${t._idx}"]`).forEach(n=>applyDurToNode(n,durCache[t._idx])); return; }
       const probe=new Audio();probe.preload='metadata';probe.src=t.file;
       probe.addEventListener('loadedmetadata',()=>{
         const dur=fmtSec(probe.duration);
-        document.querySelectorAll(`[data-track-idx="${t._idx}"]`).forEach(node=>{
-          if(node.classList.contains('card-duration')||node.classList.contains('voice-row-dur')||
-             node.classList.contains('pver-row-dur')||node.classList.contains('sp-ver-dur')||
-             node.classList.contains('sp-hero-dur')||node.classList.contains('pl-ver-opt-dur'))
-            node.textContent=dur;
-        });
+        durCache[t._idx]=dur;
+        document.querySelectorAll(`[data-track-idx="${t._idx}"]`).forEach(node=>applyDurToNode(node,dur));
       });
     });
   }
@@ -1120,6 +1155,7 @@
     el.miniIconPlay.style.display=p?'none':'block';el.miniIconPause.style.display=p?'block':'none';
     // Desktop bar play/pause icons
     const dp=el.deskBtnPlay;if(dp){dp.querySelector('.mini-icon-play2').style.display=p?'none':'block';dp.querySelector('.mini-icon-pause2').style.display=p?'block':'none';}
+    refreshSongPagePlaying();
   }
   function updateProgress(){
     if(state.scrubbing)return;
@@ -1416,6 +1452,7 @@
     else audio.play().catch(()=>{});
     saveResume();
     updatePlayerBar(track,state.playingGroup);refreshPlayingState();
+    refreshSongPagePlaying();
     updateMediaSession(track);
     renderQueueTab();
     if(state.openPlaylistId){

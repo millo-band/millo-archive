@@ -183,7 +183,13 @@ body.edit-mode { --mass-edit-h: 44px; }
   padding: 4px 8px; cursor: pointer; min-height: 28px; -webkit-tap-highlight-color: transparent;
 }
 .mass-tag-btn:hover { outline: 1px solid var(--pink); }
-.mass-list-btn { display: inline-flex; align-items: center; gap: 5px; background: var(--black); color: var(--pink); border-color: var(--black); }
+.mass-list-btn {
+  font-family: 'IBM Plex Mono', monospace; font-size: 8px; font-weight: 700; letter-spacing: 0.1em;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--black); color: var(--pink); border: 1px solid var(--black);
+  padding: 4px 8px; cursor: pointer; min-height: 28px; -webkit-tap-highlight-color: transparent;
+}
+.mass-list-btn:hover { outline: 1px solid var(--black); }
 #mass-list-dropdown .dropdown-menu { top: calc(100% + 4px); left: 0; }
 .mass-edit-done {
   font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 0.1em;
@@ -440,7 +446,11 @@ body.player-expanded .player-full {
     transform: translateX(-50%);
     border-left: var(--border); border-right: var(--border);
     border-top: none; border-bottom: none;
-    box-shadow: 0 0 0 100vmax rgba(0,0,0,0.35);
+    box-shadow: var(--shadow-lg);
+  }
+  /* No dotted dither behind the player on desktop — keep it clickable-to-close but invisible */
+  body.player-expanded .player-backdrop {
+    background-image: none; background-color: transparent;
   }
 }
 
@@ -805,21 +815,70 @@ body.player-expanded .player-close-btn:hover { opacity: 1; }
 .sp-hero-note { padding:14px 16px;font-size:11px;line-height:1.65;font-family:'IBM Plex Mono',monospace; }
 .sp-hero-note.empty { opacity:0.3;font-style:italic; }
 
-.sp-ver-row { border:1px solid var(--black);border-top:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background 0.1s; }
+/* ── VERSION TIMELINE ─────────────────── */
+.sp-timeline { display:flex;flex-direction:column; }
+.sp-ver-row {
+  border:1px solid var(--black);border-top:none;
+  -webkit-tap-highlight-color:transparent;transition:background 0.12s;
+  position:relative;padding-left:10px;
+}
 .sp-ver-row:first-of-type { border-top:1px solid var(--black); }
-.sp-ver-latest { background:rgba(var(--ink-rgb),0.03); }
-.sp-ver-row:active { background:rgba(var(--ink-rgb),0.07); }
+/* timeline rail + node */
+.sp-ver-row::before {
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:rgba(var(--ink-rgb),0.18);
+}
 .sp-ver-row.sp-playing { background:var(--black);color:var(--pink); }
+.sp-ver-row.sp-playing::before { background:var(--pink); }
 .sp-ver-row.sp-playing .sp-stage-pill { border-color:var(--pink); }
-.sp-ver-row.sp-playing .sp-ver-note { color:var(--pink); }
+.sp-ver-row.sp-playing .sp-ver-filename { color:var(--pink);opacity:0.6; }
+.sp-ver-row.sp-playing .sp-ver-note-input { color:var(--pink);caret-color:var(--pink); }
+.sp-ver-row.sp-playing .sp-ver-note-input::placeholder { color:var(--pink);opacity:0.4; }
 
 .sp-ver-row-top { display:flex;align-items:center;gap:10px;padding:11px 14px 0; }
+.sp-ver-play {
+  width:30px;height:30px;flex-shrink:0;cursor:pointer;
+  background:var(--pink);color:var(--black);border:1px solid var(--black);box-shadow:2px 2px 0 var(--black);
+  display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;
+}
+.sp-ver-play:active { transform:translate(2px,2px);box-shadow:none; }
+.sp-ver-row.sp-playing .sp-ver-play { background:var(--pink);color:var(--black);box-shadow:2px 2px 0 var(--pink); }
 .sp-ver-label { font-size:11px;font-weight:700; }
 .sp-ver-date { font-size:8px;opacity:0.4; }
 .sp-latest-badge { font-family:'Press Start 2P',monospace;font-size:5px;letter-spacing:0.1em;opacity:0.45;flex-shrink:0; }
 .sp-ver-dur { font-size:9px;opacity:0.55;flex-shrink:0; }
-.sp-ver-note { padding:6px 14px 11px;font-size:10px;line-height:1.6;font-family:'IBM Plex Mono',monospace;opacity:0.75; }
-.sp-ver-note.empty { opacity:0.28;font-style:italic; }
+.sp-ver-share-btn {
+  background:none;border:none;cursor:pointer;color:inherit;opacity:0.4;padding:4px;flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;
+}
+.sp-ver-share-btn:hover { opacity:1; }
+.sp-ver-filename {
+  font-family:'IBM Plex Mono',monospace;font-size:8px;opacity:0.35;
+  padding:6px 14px 0 14px;word-break:break-all;
+}
+.sp-ver-note-wrap { padding:8px 14px 12px;display:flex;flex-direction:column;gap:4px; }
+.sp-ver-note-input {
+  resize:vertical;min-height:38px;width:100%;
+  background:rgba(var(--ink-rgb),0.04);border:1px solid rgba(var(--ink-rgb),0.18);outline:none;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.55;
+  color:var(--black);caret-color:var(--black);padding:8px 10px;
+}
+.sp-ver-note-input:focus { border-color:var(--black); }
+.sp-ver-note-input::placeholder { opacity:0.3; }
+.sp-ver-row.sp-playing .sp-ver-note-input { background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.25); }
+.sp-ver-note-status { font-size:8px;opacity:0.5;letter-spacing:0.05em;align-self:flex-end;min-height:10px; }
+
+/* ── DESKTOP: Song page becomes a centered modal, not full screen ── */
+@media (min-width: 768px) {
+  #song-page.overlay-page {
+    top:50%; left:50%; right:auto; bottom:auto;
+    transform:translate(-50%,-50%);
+    width:min(680px, calc(100vw - 48px));
+    height:min(82vh, 880px);
+    border:var(--border);
+    box-shadow:var(--shadow-lg), 0 0 0 100vmax rgba(0,0,0,0.45);
+  }
+  #song-page .overlay-body { padding-bottom:32px; }
+}
 
 .sp-playlists-section { padding-bottom:14px; }
 .sp-folder-chips { display:flex;flex-wrap:wrap;gap:8px; }
