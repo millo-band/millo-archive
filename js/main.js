@@ -1,127 +1,175 @@
-/**
- * js/main.js
- * App bootstrap, global state, and Phase 2 routing.
- */
-import { bootDataLayer, appState } from './api.js';
-import { setupArchive, renderArchive } from './screens/archive.js';
+/* ============================================
+   MILLO ARCHIVE v11 — main.js
+   Boot, tab routing, keyboard map, help overlay, theme.
+============================================ */
+import {
+  state, $, WORKER_URL, RESUME_KEY, buildGroups, sortGroups,
+  isVoiceNote, findGroup, loadAllDurations,
+} from './core.js';
+import { loadServerState, loadNotes, applyTagOverrides } from './api.js';
+import { rerenderAllWaveforms } from './waveform.js';
+import {
+  initPlayer, playTrack, playNext, playPrev, togglePlayPause, activateShuffle,
+  setPlayerExpanded, setVolume, cycleSpeed, toggleLoop, startTimedNote, flipAB,
+  getFlatTracks, updatePlayerPlaylistBadge,
+} from './player.js';
+import { render, setFilter } from './screens/archive.js';
+import { showAlbumsIndex, renderPlaylistsPage } from './screens/albums.js';
 import { renderVault } from './screens/vault.js';
-import { renderVoiceList } from './screens/voice.js';
-import { setupUpload } from './upload.js';
+import { renderVoiceList, closeVoicePicker, isVoicePickerOpen } from './screens/voice.js';
+import { openSongPage, closeSongPage } from './songpage.js';
+import { openFilePicker } from './upload.js';
+import { audio } from './core.js';
 
-const WORKER_URL = 'https://millo-worker.millo-manager.workers.dev';
-export const audio = document.getElementById('audio-player');
-
-// Shared mutable state
-export const state = {
-  allTracks: [],
-  groups: [],
-  filteredGroups: [],
-  voiceTracks: [],
-  playingTrack: null,
-  playingGroup: null,
-  isPlaying: false,
-  activeTab: 'archive',
-  currentFilter: 'all',
-  currentSort: 'newest',
-  searchQuery: ''
-};
-
-const STAGE_RANK = { idea: 0, demo: 1, finished: 2, complete: 3 };
-
-function isVoiceNote(t) { return t.filename && /voice/i.test(t.filename); }
-
-function buildGroups(tracks) {
-  const map = new Map();
-  tracks.forEach(t => {
-    if (isVoiceNote(t)) return;
-    const key = t.title.toLowerCase();
-    if (!map.has(key)) map.set(key, { title: t.title, tracks: [], stages: new Set(), latestDate: '1970-01-01' });
-    const g = map.get(key);
-    g.tracks.push(t);
-    g.stages.add(t.stage);
-    if ((t.uploaded || '') > g.latestDate) g.latestDate = t.uploaded;
+/* ── Theme toggle (light pink ⇄ dark terminal) ── */
+const themeBtn=$('theme-toggle-btn');
+if(themeBtn){
+  themeBtn.addEventListener('click',()=>{
+    const dark=document.body.classList.toggle('dark');
+    try{localStorage.setItem('millo-theme',dark?'dark':'light');}catch{}
+    const tc=document.querySelector('meta[name="theme-color"]');
+    if(tc)tc.setAttribute('content',dark?'#070409':'#FF91AF');
+    rerenderAllWaveforms(); // canvas ink color changed
   });
-  
-  const groups = [];
-  for (const g of map.values()) {
-    g.tracks.sort((a, b) => {
-      const sr = STAGE_RANK[a.stage] - STAGE_RANK[b.stage];
-      if (sr !== 0) return sr;
-      return (b.uploaded || '') > (a.uploaded || '') ? 1 : -1;
-    });
-    g.stage = [...g.stages].sort((a, b) => STAGE_RANK[b] - STAGE_RANK[a])[0];
-    g.type = g.tracks.length > 1 ? 'group' : 'single';
-    groups.push(g);
+}
+
+/* ── Bottom tab bar + hash routing (§4) ── */
+const SCREENS=['archive','albums','vault','voice'];
+export function switchScreen(name){
+  if(!SCREENS.includes(name))name='archive';
+  state.activeScreen=name;
+  document.body.dataset.screen=name;
+  document.querySelectorAll('.tabbar-btn').forEach(b=>b.classList.toggle('active',b.dataset.screen===name));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id==='screen-'+name));
+  // keep query params, swap hash
+  const url=new URL(window.location);url.hash='#'+name;
+  history.replaceState(null,'',url.toString());
+
+  if(name==='albums'){
+    if(state.openPlaylistId)return; // stay on the open album
+    showAlbumsIndex();
   }
-  return groups;
+  if(name==='vault')renderVault();
+  if(name==='voice')renderVoiceList();
+  if(name==='archive')render();
+  $('main-content').scrollTop=0;
 }
-
-// ── PHASE 2: BOTTOM TAB ROUTING ──
-function handleHashChange() {
-  const hash = window.location.hash.replace('#', '') || 'archive';
-  state.activeTab = hash;
-  document.body.dataset.screen = hash;
-
-  // Update Tab Bar UI
-  document.querySelectorAll('.tabbar-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.screen === hash);
-  });
-
-  // Update Screens
-  document.querySelectorAll('.screen').forEach(screen => {
-    screen.classList.toggle('active', screen.id === `screen-${hash}`);
-  });
-
-  // Controls visibility
-  const isArchive = hash === 'archive';
-  document.getElementById('controls-bar').style.display = isArchive ? 'flex' : 'none';
-  document.getElementById('stage-chips-bar').style.display = isArchive ? 'flex' : 'none';
-
-  // Actively render the requested screen
-  if (hash === 'archive') renderArchive();
-  else if (hash === 'vault') renderVault();
-  else if (hash === 'voice') renderVoiceList();
-  // Albums will be wired up once we port the grid view over!
-}
-
-window.addEventListener('hashchange', handleHashChange);
-document.querySelectorAll('.tabbar-btn').forEach(btn => {
-  btn.addEventListener('click', () => { window.location.hash = btn.dataset.screen; });
+document.querySelectorAll('.tabbar-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>switchScreen(btn.dataset.screen));
+});
+window.addEventListener('hashchange',()=>{
+  const name=location.hash.replace('#','');
+  if(SCREENS.includes(name)&&name!==state.activeScreen)switchScreen(name);
 });
 
-// ── BOOT ──
-async function init() {
-  await bootDataLayer();
-  
-  try {
-    const res = await fetch(WORKER_URL);
-    const tracks = await res.json();
-    
-    tracks.forEach((t, i) => t._idx = i);
-    
-    // Apply server tag overrides
-    tracks.forEach(t => {
-      if (t.filename && appState.tagOverrides[t.filename]) {
-        t.stage = appState.tagOverrides[t.filename];
+/* ── RADIO ── */
+$('shuffle-radio-btn').addEventListener('click',()=>{
+  if(state.activeScreen!=='archive')switchScreen('archive');
+  state.currentFilter='all';
+  document.querySelectorAll('.stage-chip').forEach(c=>c.classList.toggle('active',c.dataset.filter==='all'));
+  activateShuffle();$('shuffle-radio-btn').classList.add('playing');
+});
+
+/* ── Song page back / share ── */
+$('song-back-btn').addEventListener('click',closeSongPage);
+$('song-share-btn').addEventListener('click',()=>{
+  if(state.songPageGroup)import('./player.js').then(m=>m.shareGroup(state.songPageGroup));
+});
+
+/* ── Help overlay (§7) ── */
+const helpOverlay=$('help-overlay');
+export function toggleHelp(force){
+  const show=force!==undefined?force:helpOverlay.style.display==='none'||!helpOverlay.style.display;
+  helpOverlay.style.display=show?'flex':'none';
+}
+if($('help-close'))$('help-close').addEventListener('click',()=>toggleHelp(false));
+if(helpOverlay)helpOverlay.addEventListener('click',e=>{if(e.target===helpOverlay)toggleHelp(false);});
+
+/* ── Keyboard map (§7 — existing bindings all stay) ── */
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  if(e.key==='/'){e.preventDefault();if(state.activeScreen!=='archive')switchScreen('archive');if(!document.body.classList.contains('search-open'))$('search-btn').click();return;}
+  if(e.key==='?'){e.preventDefault();toggleHelp();return;}
+  if(e.key==='Escape'){
+    if(helpOverlay.style.display==='flex'){toggleHelp(false);return;}
+    if(isVoicePickerOpen()){closeVoicePicker();return;}
+    if(document.body.classList.contains('search-open')){$('search-btn').click();return;}
+    if(state.songPageGroup){closeSongPage();return;}
+    if(state.activeScreen==='albums'&&state.openPlaylistId){showAlbumsIndex();return;}
+    if(state.playerExpanded){setPlayerExpanded(false);return;}
+    return;
+  }
+  if(e.code==='Space'){e.preventDefault();togglePlayPause();return;}
+  if((e.shiftKey&&e.code==='ArrowRight')||e.key==='.'){if(audio.duration){audio.currentTime=Math.min(audio.duration,audio.currentTime+5);}return;}
+  if((e.shiftKey&&e.code==='ArrowLeft')||e.key===','){if(audio.duration){audio.currentTime=Math.max(0,audio.currentTime-5);}return;}
+  if(e.code==='ArrowRight'){playNext();return;}
+  if(e.code==='ArrowLeft'){playPrev();return;}
+  if(e.code==='ArrowUp'){e.preventDefault();setVolume(audio.volume+0.05);return;}
+  if(e.code==='ArrowDown'){e.preventDefault();setVolume(audio.volume-0.05);return;}
+  if(e.key==='['){cycleSpeed(-1);return;}
+  if(e.key===']'){cycleSpeed(1);return;}
+  if(e.key==='l'||e.key==='L'){toggleLoop();return;}
+  /* new in v11 */
+  if(e.key==='n'||e.key==='N'){e.preventDefault();startTimedNote();return;}
+  if(e.key==='x'||e.key==='X'){flipAB();return;}
+  if(e.key==='u'||e.key==='U'){openFilePicker();return;}
+  if(e.key==='1'){switchScreen('archive');return;}
+  if(e.key==='2'){switchScreen('albums');return;}
+  if(e.key==='3'){switchScreen('vault');return;}
+  if(e.key==='4'){switchScreen('voice');return;}
+});
+
+/* ── Boot ── */
+async function init(){
+  initPlayer();
+
+  // data layer first: server state (with one-time localStorage migration) + notes
+  await Promise.all([loadServerState(), loadNotes()]);
+
+  try{
+    const tracks=await fetch(WORKER_URL).then(r=>r.json());
+    $('loading-state').style.display='none';
+    if(!tracks.length){$('empty-state').style.display='block';return;}
+    tracks.forEach((t,i)=>t._idx=i);
+    applyTagOverrides(tracks);
+    state.allTracks=tracks;
+    state.voiceTracks=tracks.filter(isVoiceNote);
+    const nonVoice=tracks.filter(t=>!isVoiceNote(t));
+    state.groups=buildGroups(nonVoice);
+    state.filteredGroups=sortGroups(state.groups,'newest');
+
+    // restore active tab from hash, then render it
+    const initial=location.hash.replace('#','');
+    switchScreen(SCREENS.includes(initial)?initial:'archive');
+
+    loadAllDurations(tracks);
+
+    const params=new URLSearchParams(window.location.search);
+    const songParam=params.get('song');
+    const trackParam=params.get('track');
+    if(songParam){
+      const group=state.groups.find(g=>g.title.toLowerCase()===decodeURIComponent(songParam).toLowerCase());
+      if(group){
+        if(trackParam){
+          const track=group.tracks.find(t=>t.filename===decodeURIComponent(trackParam));
+          if(track){playTrack(track,group);setPlayerExpanded(true);}
+          else openSongPage(group);
+        } else { openSongPage(group); }
       }
-    });
-
-    state.allTracks = tracks;
-    state.voiceTracks = tracks.filter(isVoiceNote);
-    const nonVoice = tracks.filter(t => !isVoiceNote(t));
-    
-    state.groups = buildGroups(nonVoice);
-    state.filteredGroups = state.groups;
-    
-    document.getElementById('loading-state').style.display = 'none';
-    
-    // Initialize components
-    setupArchive();
-    setupUpload();
-    handleHashChange(); // Trigger initial render
-
-  } catch (err) {
-    document.getElementById('loading-state').innerHTML = `<span class="loading-text">ERROR: ${err.message}</span>`;
+    } else if(trackParam){
+      const track=state.allTracks.find(t=>t.filename===decodeURIComponent(trackParam));
+      if(track){playTrack(track,findGroup(track));setPlayerExpanded(true);}
+    } else {
+      // Resume last session — cue the track paused, ready to hit play.
+      try{
+        const r=JSON.parse(localStorage.getItem(RESUME_KEY)||'null');
+        if(r&&r.f){const track=state.allTracks.find(t=>t.filename===r.f);
+          if(track)playTrack(track,findGroup(track),{noPlay:true,seek:r.t||0});}
+      }catch{}
+    }
+  }catch(err){
+    $('loading-state').innerHTML=`<span class="loading-text">ERROR: ${err.message}</span>`;
+    $('loading-state').style.display='block';
   }
 }
 

@@ -1,174 +1,150 @@
-/**
- * js/screens/vault.js
- * The Vault: Daily pick, stale shelf, and upload heatmap.
- */
-import { state } from '../main.js';
+/* ============================================
+   MILLO ARCHIVE v11 — screens/vault.js
+   The motivation engine (§6.4):
+   FROM THE VAULT (daily pick) · STALE SHELF · ACTIVITY heatmap.
+============================================ */
+import {
+  state, $, daysSince, TAG_LABEL, STAGE_DITHER, fillDurations,
+} from '../core.js';
+import { playTrack } from '../player.js';
+import { openSongPage } from '../songpage.js';
+import { generatePixelArt } from '../art.js';
 
-const STAGE_DITHER = { idea: 'dither-25', demo: 'dither-50', finished: 'dither-75', complete: 'dither-100' };
+/* deterministic daily rng — same pick all day, new pick tomorrow */
+function seededRandom(seedString){
+  let hash=0;
+  for(let i=0;i<seedString.length;i++)hash=seedString.charCodeAt(i)+((hash<<5)-hash);
+  return function(){const x=Math.sin(hash++)*10000;return x-Math.floor(x);};
+}
 
-// Simple seeded PRNG for daily deterministic picks
-function seededRandom(seedStr) {
-  let h = 0;
-  for (let i = 0; i < seedStr.length; i++) {
-    h = Math.imul(31, h) + seedStr.charCodeAt(i) | 0;
+/* weighted toward older + idea/demo (unfinished business) */
+export function pickOfTheDay(){
+  const today=new Date().toISOString().split('T')[0];
+  const rng=seededRandom(today);
+  let candidates=state.groups.filter(g=>daysSince(g.latestDate)>60);
+  if(!candidates.length){
+    // nothing older than 60 days → oldest group
+    return [...state.groups].sort((a,b)=>a.latestDate>b.latestDate?1:-1)[0]||null;
   }
-  return function() {
-    h = Math.imul(h ^ h >>> 16, 2246822507);
-    h = Math.imul(h ^ h >>> 13, 3266489909);
-    return (h ^= h >>> 16) >>> 0 / 4294967296;
-  };
+  const weights=candidates.map(g=>{
+    const age=daysSince(g.latestDate);
+    const stageBoost=(g.stage==='idea'||g.stage==='demo')?2:1;
+    return age*stageBoost;
+  });
+  const totalW=weights.reduce((a,b)=>a+b,0);
+  let r=rng()*totalW;
+  for(let i=0;i<candidates.length;i++){
+    r-=weights[i];
+    if(r<=0)return candidates[i];
+  }
+  return candidates[candidates.length-1];
 }
 
-function getDaysSince(dateStr) {
-  if (!dateStr || dateStr.startsWith('1970')) return 999;
-  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-}
+export function renderVault(){
+  const body=$('vault-body');
+  body.innerHTML='';
+  if(!state.groups.length){
+    const empty=document.createElement('div');empty.className='sp-empty';empty.textContent='NOTHING IN THE VAULT YET.';
+    body.appendChild(empty);return;
+  }
 
-export function renderVault() {
-  const vaultBody = document.getElementById('vault-body');
-  if (!vaultBody) return;
-  vaultBody.innerHTML = '';
+  /* ── 1. FROM THE VAULT — arcade attract screen ── */
+  const pick=pickOfTheDay();
+  if(pick){
+    const sec=document.createElement('div');sec.className='vault-section';
+    const lbl=document.createElement('div');lbl.className='section-label';lbl.textContent='FROM THE VAULT';sec.appendChild(lbl);
 
-  const groups = state.groups.filter(g => g.tracks.length > 0);
-  if (!groups.length) return;
+    const card=document.createElement('div');card.className='vault-pick';
+    const canvas=document.createElement('canvas');
+    canvas.id='vault-pick-canvas';canvas.className='vault-pick-art';
+    canvas.width=64;canvas.height=64;
+    card.appendChild(canvas);
 
-  // ── 1. FROM THE VAULT (Daily Pick) ──
-  const today = new Date().toISOString().split('T')[0];
-  const rng = seededRandom(today);
-  
-  // Qualify > 60 days old
-  let qualified = groups.filter(g => getDaysSince(g.latestDate) > 60);
-  if (!qualified.length) qualified = groups; // Fallback to all
+    const info=document.createElement('div');info.className='vault-pick-info';
+    const title=document.createElement('div');title.className='vault-pick-title';title.textContent=pick.title.toUpperCase();info.appendChild(title);
 
-  // Weight towards older and idea/demo
-  qualified.sort((a, b) => {
-    let weightA = getDaysSince(a.latestDate) + (['idea', 'demo'].includes(a.stage) ? 100 : 0);
-    let weightB = getDaysSince(b.latestDate) + (['idea', 'demo'].includes(b.stage) ? 100 : 0);
-    return weightB - weightA;
+    const meta=document.createElement('div');meta.className='vault-pick-meta';
+    const days=daysSince(pick.latestDate);
+    const touched=document.createElement('span');touched.className='vault-pick-touched';
+    touched.textContent=`LAST TOUCHED: ${days} DAY${days!==1?'S':''} AGO`;
+    meta.appendChild(touched);
+    const pill=document.createElement('span');pill.className='tag-pill';
+    pill.innerHTML=`<span class="dither-swatch ${STAGE_DITHER[pick.stage]||''}"></span>${TAG_LABEL[pick.stage]||'?'}`;
+    meta.appendChild(pill);
+    info.appendChild(meta);
+
+    const prompt=document.createElement('div');prompt.className='vault-press-play';prompt.textContent='▶ PRESS PLAY';
+    info.appendChild(prompt);
+    card.appendChild(info);
+
+    card.addEventListener('click',()=>{
+      const playT=pick.tracks[pick.tracks.length-1];
+      playTrack(playT,pick);
+    });
+    sec.appendChild(card);
+    body.appendChild(sec);
+    generatePixelArt('vault-pick-canvas', pick.title);
+  }
+
+  /* ── 2. STALE SHELF — 10 most-neglected groups ── */
+  const staleSec=document.createElement('div');staleSec.className='vault-section';
+  const staleLbl=document.createElement('div');staleLbl.className='section-label';staleLbl.textContent='STALE SHELF';staleSec.appendChild(staleLbl);
+
+  const stale=[...state.groups].sort((a,b)=>a.latestDate>b.latestDate?1:-1).slice(0,10);
+  stale.forEach(g=>{
+    const row=document.createElement('div');row.className='stale-row';
+    const d=document.createElement('span');d.className='stale-days';d.textContent=`${daysSince(g.latestDate)}d`;
+    const t=document.createElement('span');t.className='stale-title';t.textContent=g.title;
+    const pill=document.createElement('span');pill.className='tag-pill stale-pill';
+    pill.innerHTML=`<span class="dither-swatch ${STAGE_DITHER[g.stage]||''}"></span>${TAG_LABEL[g.stage]||'?'}`;
+    row.appendChild(d);row.appendChild(t);row.appendChild(pill);
+    row.addEventListener('click',()=>openSongPage(g));
+    staleSec.appendChild(row);
   });
+  body.appendChild(staleSec);
 
-  // Pick one from top tier using today's seed
-  const pickPool = qualified.slice(0, Math.max(1, Math.floor(qualified.length * 0.2)));
-  const pick = pickPool[Math.floor(rng() * pickPool.length)] || groups[groups.length - 1];
+  /* ── 3. ACTIVITY — 7×26 upload heatmap ── */
+  const actSec=document.createElement('div');actSec.className='vault-section';
+  const actLbl=document.createElement('div');actLbl.className='section-label';actLbl.textContent='ACTIVITY';actSec.appendChild(actLbl);
 
-  const pickCard = document.createElement('div');
-  pickCard.className = 'vault-pick vault-section';
-  
-  // We reuse the existing pixel generator on a 128px canvas
-  const canvasId = `vault-art-${Date.now()}`;
-  const pickArt = document.createElement('canvas');
-  pickArt.id = canvasId;
-  pickArt.className = 'vault-pick-art';
-  pickCard.appendChild(pickArt);
+  // count uploads per day (pure upload-date data — no new tracking)
+  const counts={};
+  state.allTracks.forEach(t=>{if(t.uploaded)counts[t.uploaded]=(counts[t.uploaded]||0)+1;});
 
-  const pickInfo = document.createElement('div');
-  pickInfo.className = 'vault-pick-info';
-  pickInfo.innerHTML = `
-    <div class="vault-pick-meta">
-      <span class="sp-stage-pill sp-stage-sm">${pick.stage.toUpperCase()}</span>
-      <span class="vault-pick-touched">LAST TOUCHED: ${getDaysSince(pick.latestDate)} DAYS AGO</span>
-    </div>
-    <div class="vault-pick-title">${pick.title.toUpperCase()}</div>
-    <div class="vault-press-play">▶ PRESS PLAY</div>
-  `;
-  pickCard.appendChild(pickInfo);
-  
-  pickCard.addEventListener('click', () => {
-    console.log('Playing daily pick', pick.title);
-    // playTrack(pick.tracks[pick.tracks.length - 1], pick); 
-  });
-  
-  vaultBody.appendChild(pickCard);
-  
-  // Call the global procedural art generator if available
-  if (window.generatePixelArt) window.generatePixelArt(canvasId, pick.title);
+  const WEEKS=26;
+  const today=new Date();
+  // start on the Sunday 26 weeks back so columns align to weeks
+  const start=new Date(today);
+  start.setDate(start.getDate()-(WEEKS*7-1)-today.getDay());
 
-  // ── 2. STALE SHELF ──
-  const staleSection = document.createElement('div');
-  staleSection.className = 'vault-section';
-  staleSection.innerHTML = `<div class="section-label">STALE SHELF</div>`;
-  
-  const staleList = [...groups]
-    .sort((a, b) => getDaysSince(b.latestDate) - getDaysSince(a.latestDate))
-    .slice(0, 10);
-    
-  staleList.forEach(g => {
-    const row = document.createElement('div');
-    row.className = 'stale-row';
-    row.innerHTML = `
-      <span class="stale-days">${getDaysSince(g.latestDate)}d</span>
-      <span class="stale-title">${g.title}</span>
-      <span class="sp-stage-pill sp-stage-sm stale-pill">[${g.stage.toUpperCase()}]</span>
-    `;
-    // row.addEventListener('click', () => openSongPage(g));
-    staleSection.appendChild(row);
-  });
-  
-  vaultBody.appendChild(staleSection);
-
-  // ── 3. ACTIVITY HEATMAP ──
-  const heatSection = document.createElement('div');
-  heatSection.className = 'vault-section';
-  heatSection.innerHTML = `<div class="section-label">ACTIVITY</div>`;
-
-  const heatmap = document.createElement('div');
-  heatmap.className = 'vault-heatmap';
-  
-  // Count uploads per day
-  const uploadCounts = {};
-  state.allTracks.forEach(t => {
-    if (t.uploaded) uploadCounts[t.uploaded] = (uploadCounts[t.uploaded] || 0) + 1;
-  });
-
-  const WEEKS = 26;
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
-  let thisMonthCount = 0;
-  
-  // Adjust to start on Sunday
-  const startOffset = now.getDay();
-  
-  for (let w = WEEKS - 1; w >= 0; w--) {
-    const col = document.createElement('div');
-    col.className = 'heat-col';
-    
-    for (let d = 0; d < 7; d++) {
-      const cellDate = new Date(now);
-      cellDate.setDate(now.getDate() - (w * 7) - (startOffset - d));
-      const dateStr = cellDate.toISOString().split('T')[0];
-      
-      const count = uploadCounts[dateStr] || 0;
-      if (dateStr.startsWith(todayStr.slice(0, 7))) thisMonthCount += count;
-      
-      const cell = document.createElement('div');
-      cell.className = 'heat-cell';
-      
-      if (dateStr > todayStr) {
-        cell.classList.add('heat-future');
-      } else if (count === 0) {
-        cell.classList.add('heat-0');
-      } else {
-        // Apply new dither classes
-        if (count === 1) cell.classList.add('dither-25');
-        else if (count === 2) cell.classList.add('dither-50');
-        else cell.classList.add('dither-100'); // 3+ is solid
-      }
-      
-      cell.title = `${dateStr}: ${count} uploads`;
+  const heat=document.createElement('div');heat.className='vault-heatmap';
+  for(let w=0;w<WEEKS;w++){
+    const col=document.createElement('div');col.className='heat-col';
+    for(let d=0;d<7;d++){
+      const cellDate=new Date(start);
+      cellDate.setDate(start.getDate()+w*7+d);
+      const iso=cellDate.toISOString().split('T')[0];
+      const n=counts[iso]||0;
+      const cell=document.createElement('span');
+      cell.className='heat-cell '+(n===0?'heat-0':n===1?'dither-25':n===2?'dither-50':'dither-100');
+      if(cellDate>today)cell.classList.add('heat-future');
+      cell.title=`${iso} — ${n} upload${n!==1?'s':''}`;
       col.appendChild(cell);
     }
-    heatmap.appendChild(col);
+    heat.appendChild(col);
   }
-  
-  heatSection.appendChild(heatmap);
-  
-  const sortedDates = Object.keys(uploadCounts).sort();
-  const lastUpload = sortedDates.length ? getDaysSince(sortedDates[sortedDates.length - 1]) : '?';
-  
-  const statLine = document.createElement('div');
-  statLine.className = 'vault-stat-line';
-  statLine.textContent = `LAST UPLOAD: ${lastUpload}D AGO · ${thisMonthCount} UPLOADS THIS MONTH`;
-  heatSection.appendChild(statLine);
+  actSec.appendChild(heat);
 
-  vaultBody.appendChild(heatSection);
+  // stat line: `LAST UPLOAD: 3D AGO · 14 UPLOADS THIS MONTH`
+  const dates=Object.keys(counts).sort();
+  const lastUpload=dates[dates.length-1];
+  const thisMonth=new Date().toISOString().slice(0,7);
+  const monthCount=state.allTracks.filter(t=>t.uploaded&&t.uploaded.startsWith(thisMonth)).length;
+  const stat=document.createElement('div');stat.className='vault-stat-line';
+  const lastD=lastUpload?daysSince(lastUpload):null;
+  stat.textContent=(lastD!==null?`LAST UPLOAD: ${lastD===0?'TODAY':lastD+'D AGO'}`:'NO UPLOADS')+` · ${monthCount} UPLOAD${monthCount!==1?'S':''} THIS MONTH`;
+  actSec.appendChild(stat);
+
+  body.appendChild(actSec);
+  fillDurations(body);
 }

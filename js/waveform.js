@@ -1,122 +1,197 @@
-/**
- * js/waveform.js
- * 1-bit quantized waveform generator and scrubber
- */
+/* ============================================
+   MILLO ARCHIVE v11 — waveform.js
+   1-bit quantized pixel waveform scrubber (§5.1).
+   ~200 bars, 8 height levels, ink-only rendering.
+   Played = solid ink · unplayed = 50% dither · no peaks = flat bar.
+============================================ */
+import { getPeaks, postPeaks, cachePeaks } from './api.js';
+
 const BUCKETS = 200;
-const LEVELS = 8;
-const PEAK_CACHE = new Map(); // In-memory fallback
-const WORKER_URL = 'https://millo-worker.millo-manager.workers.dev';
+const instances = [];
 
-// Gets exact --ink color from CSS for current theme
-function getInkColor() {
-  return getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#0a0a0a';
-}
-
-export async function loadPeaks(filename, audioUrl) {
-  if (PEAK_CACHE.has(filename)) return PEAK_CACHE.get(filename);
-
-  try {
-    // 1. Try to fetch cached peaks from the worker
-    const res = await fetch(`${WORKER_URL}/peaks?f=${encodeURIComponent(filename)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.length) {
-        PEAK_CACHE.set(filename, data);
-        return data;
-      }
-    }
-
-    // 2. Generate peaks if missing (Web Audio API)
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const response = await fetch(audioUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    const channelData = audioBuffer.getChannelData(0); // Use left channel
-
-    const step = Math.ceil(channelData.length / BUCKETS);
-    const peaks = [];
-    
-    for (let i = 0; i < BUCKETS; i++) {
-      let max = 0;
-      for (let j = 0; j < step; j++) {
-        const datum = channelData[(i * step) + j];
-        if (datum !== undefined && Math.abs(datum) > max) {
-          max = Math.abs(datum);
-        }
-      }
-      // Quantize 0 to 7
-      peaks.push(Math.min(LEVELS - 1, Math.floor(max * LEVELS * 1.5))); 
-    }
-
-    PEAK_CACHE.set(filename, peaks);
-
-    // 3. Post to worker in background so we don't block
-    let key = localStorage.getItem('millo-key') || '';
-    fetch(`${WORKER_URL}/peaks`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Millo-Key': key },
-      body: JSON.stringify({ filename, peaks })
-    }).catch(console.error);
-
-    return peaks;
-  } catch (err) {
-    console.error('Peak generation failed, falling back to flat bar.', err);
-    return null; // Null triggers flat bar fallback
-  }
-}
-
-export function drawWaveform(canvas, peaks, progressPct) {
-  if (!canvas || !peaks) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width;
-  const h = canvas.height;
-  
-  ctx.clearRect(0, 0, w, h);
-  
-  const barWidth = 3;
-  const gap = 1;
-  const totalBarW = barWidth + gap;
-  const barCount = Math.floor(w / totalBarW);
-  
-  // Resample peaks to fit canvas width
-  const resampled = [];
-  for (let i = 0; i < barCount; i++) {
-    const origIdx = Math.floor((i / barCount) * peaks.length);
-    resampled.push(peaks[origIdx] || 1);
+export class Waveform {
+  constructor(canvas, opts) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.opts = opts || {};           // { onSeek(pct), onPreview(pct), flagsEl }
+    this.peaks = null;                // [0-7 × 200] or null → flat bar
+    this.progress = 0;                // 0..1
+    this.flags = [];                  // [{t, text}]
+    this.duration = 0;
+    this.scrubbing = false;
+    instances.push(this);
+    this._bindScrub();
+    // re-render on resize (canvas is CSS-sized)
+    if (window.ResizeObserver) new ResizeObserver(() => this.render()).observe(canvas);
   }
 
-  const ink = getInkColor();
-  const maxBarH = h;
-  const levelH = maxBarH / LEVELS;
+  setPeaks(peaks) { this.peaks = Array.isArray(peaks) && peaks.length ? peaks : null; this.render(); }
 
-  resampled.forEach((peakLevel, i) => {
-    const x = i * totalBarW;
-    const barH = Math.max(1, peakLevel * levelH);
-    const y = (h - barH) / 2; // Center vertically
-    const isPlayed = (i / barCount) <= progressPct;
+  setProgress(pct) {
+    if (this.scrubbing) return;
+    pct = Math.max(0, Math.min(1, pct || 0));
+    // quantize redraws to bar resolution so we don't repaint 60×/sec for nothing
+    if (Math.abs(pct - this.progress) < 0.004 && pct !== 0 && pct !== 1) return;
+    this.progress = pct;
+    this.render();
+  }
 
-    ctx.fillStyle = ink;
+  setFlags(flags, duration) {
+    this.flags = flags || [];
+    this.duration = duration || 0;
+    this._renderFlags();
+  }
 
-    if (isPlayed) {
-      // Solid ink for played region
-      ctx.fillRect(x, y, barWidth, barH);
-    } else {
-      // 50% dither for unplayed region
-      for (let px = 0; px < barWidth; px++) {
-        for (let py = 0; py < barH; py++) {
-          if ((x + px + Math.floor(y) + py) % 2 === 0) {
-            ctx.fillRect(x + px, y + py, 1, 1);
+  ink() {
+    // resolved --ink via the canvas's computed color (canvas has color:var(--ink))
+    return getComputedStyle(this.canvas).color || '#000';
+  }
+
+  render() {
+    const c = this.canvas, ctx = this.ctx;
+    const dpr = window.devicePixelRatio || 1;
+    const w = c.clientWidth, h = c.clientHeight;
+    if (!w || !h) return;
+    if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = this.ink();
+
+    if (!this.peaks) { this._renderFlatBar(w, h); return; }
+
+    // bars: 3px wide + 1px gap, chunky pixels
+    const step = 4, barW = 3;
+    const bars = Math.max(10, Math.floor(w / step));
+    const playedX = this.progress * w;
+
+    for (let i = 0; i < bars; i++) {
+      const x = i * step;
+      const peak = this.peaks[Math.floor(i / bars * this.peaks.length)] || 0;
+      const level = Math.max(1, peak + 1);                       // 1..8 so silence still shows a nub
+      const barH = Math.round(level / 8 * (h - 2));
+      const y = Math.round((h - barH) / 2);
+      if (x + barW <= playedX) {
+        ctx.globalAlpha = 1;
+        ctx.fillRect(x, y, barW, barH);
+      } else {
+        // unplayed: 50% dither — 2px checkerboard cells inside the bar
+        ctx.globalAlpha = 1;
+        for (let py = 0; py < barH; py += 2) {
+          for (let px = 0; px < barW; px += 2) {
+            if (((px >> 1) + ((y + py) >> 1)) % 2 === 0) {
+              ctx.fillRect(x + px, y + py, 2, Math.min(2, barH - py));
+            }
           }
         }
       }
     }
-  });
+    ctx.globalAlpha = 1;
+  }
+
+  /* fallback while peaks are missing/computing — playback never blocks */
+  _renderFlatBar(w, h) {
+    const ctx = this.ctx;
+    const barH = 6, y = Math.round((h - barH) / 2);
+    ctx.globalAlpha = 0.25;
+    ctx.fillRect(0, y, w, barH);
+    ctx.globalAlpha = 1;
+    ctx.fillRect(0, y, Math.round(this.progress * w), barH);
+    // square thumb
+    const tx = Math.max(0, Math.min(w - 4, Math.round(this.progress * w) - 2));
+    ctx.fillRect(tx, y - 4, 4, barH + 8);
+  }
+
+  _renderFlags() {
+    const holder = this.opts.flagsEl;
+    if (!holder) return;
+    holder.innerHTML = '';
+    if (!this.duration || !this.flags.length) return;
+    this.flags.forEach(f => {
+      const m = document.createElement('button');
+      m.className = 'wave-flag';
+      m.textContent = '▼';
+      m.style.left = Math.max(0, Math.min(100, f.t / this.duration * 100)) + '%';
+      m.title = f.text;
+      m.addEventListener('click', e => {
+        e.stopPropagation();
+        if (this.opts.onFlagClick) this.opts.onFlagClick(f);
+      });
+      holder.appendChild(m);
+    });
+  }
+
+  _pct(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    return Math.max(0, Math.min(1, (cx - rect.left) / rect.width));
+  }
+
+  _bindScrub() {
+    const start = e => {
+      this.scrubbing = true;
+      const p = this._pct(e);
+      this.progress = p; this.render();
+      if (this.opts.onPreview) this.opts.onPreview(p);
+    };
+    const move = e => {
+      if (!this.scrubbing) return;
+      const p = this._pct(e);
+      this.progress = p; this.render();
+      if (this.opts.onPreview) this.opts.onPreview(p);
+    };
+    const end = e => {
+      if (!this.scrubbing) return;
+      this.scrubbing = false;
+      if (this.opts.onSeek) this.opts.onSeek(this.progress);
+    };
+    this.canvas.addEventListener('mousedown', start);
+    this.canvas.addEventListener('touchstart', start, { passive: true });
+    document.addEventListener('mousemove', move);
+    document.addEventListener('touchmove', move, { passive: true });
+    document.addEventListener('mouseup', end);
+    document.addEventListener('touchend', end);
+  }
 }
 
-// Resizes canvas to fit container properly for sharp pixel rendering
-export function resizeCanvas(canvas) {
-  const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width = rect.width;
-  // Let CSS dictate height, match internal resolution
-  canvas.height = rect.height || 54; 
+/* theme toggled → ink color changed → repaint every canvas */
+export function rerenderAllWaveforms() { instances.forEach(w => w.render()); }
+
+/* ── Peaks pipeline (§5.1) ───────────────────
+   first play with no cached peaks: fetch → decode → 200 buckets → 0-7 → POST.
+   decode failure (huge WAVs, odd codecs) → flat bar forever, no error surfaced. */
+const computing = new Set();
+const failed = new Set();
+
+export async function ensurePeaks(track, onReady) {
+  if (!track || !track.filename || failed.has(track.filename)) return;
+  const cached = await getPeaks(track.filename);
+  if (cached) { onReady(cached); return; }
+  if (computing.has(track.filename)) return;
+  computing.add(track.filename);
+  try {
+    const buf = await fetch(track.file).then(r => r.arrayBuffer());
+    const actx = new (window.AudioContext || window.webkitAudioContext)();
+    const decoded = await actx.decodeAudioData(buf);
+    const data = decoded.getChannelData(0);
+    const bucketSize = Math.max(1, Math.floor(data.length / BUCKETS));
+    const raw = new Array(BUCKETS).fill(0);
+    for (let i = 0; i < BUCKETS; i++) {
+      let max = 0;
+      const startI = i * bucketSize, endI = Math.min(data.length, startI + bucketSize);
+      // stride through the bucket — max-abs amplitude, sampled for speed
+      const stride = Math.max(1, Math.floor((endI - startI) / 500));
+      for (let j = startI; j < endI; j += stride) { const v = Math.abs(data[j]); if (v > max) max = v; }
+      raw[i] = max;
+    }
+    actx.close();
+    const overall = Math.max(0.001, ...raw);
+    const peaks = raw.map(v => Math.min(7, Math.round(v / overall * 7)));
+    cachePeaks(track.filename, peaks);
+    onReady(peaks);            // render immediately…
+    postPeaks(track.filename, peaks); // …then persist in the background
+  } catch {
+    failed.add(track.filename); // flat bar forever
+  } finally {
+    computing.delete(track.filename);
+  }
 }

@@ -65,11 +65,21 @@ body.player-expanded .player-full { display: flex; }
 
 /* ── DESKTOP: same single-column layout as mobile ── */
 @media (min-width: 768px) {
+  /* Collapsed bar is wider than the expanded column so the waveform scrubber,
+     transport, and controls all fit on one row without overlapping. */
   #player-bar {
     left: 50%; right: auto; bottom: 24px;
     transform: translateX(-50%);
-    width: min(440px, calc(100vw - 40px));
+    width: min(760px, calc(100vw - 40px));
   }
+  /* Title block must not compete with the scrub zone for width — cap it so the
+     waveform (flex:1) always gets the leftover space. Higher specificity than the
+     base `.player-mini-info{flex:1}` so it wins regardless of source order. */
+  .player-mini-row > .player-mini-info { flex: 0 1 170px; }
+  .player-mini-row > .desktop-scrub-zone { flex: 1 1 auto; }
+  .desktop-scrub-track-wrap { min-width: 90px; }
+
+  /* Expanded player returns to the narrow single-column (mobile-mirrored) sheet. */
   body.player-expanded #player-bar {
     left: 50%; right: auto; top: 0; bottom: 0;
     width: min(440px, 100vw);

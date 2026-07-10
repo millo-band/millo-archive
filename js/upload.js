@@ -1,118 +1,108 @@
-/**
- * js/upload.js
- * Global drag-and-drop upload and progress queue.
- */
-import { uploadFile } from './api.js';
-import { state } from './main.js';
-import { renderArchive } from './screens/archive.js';
+/* ============================================
+   MILLO ARCHIVE v11 — upload.js
+   Global drag-and-drop + file-picker upload (§6.2).
+   Old-school segmented progress bars via XHR events.
+============================================ */
+import { state, $, buildGroups, isVoiceNote, showToast, loadAllDurations } from './core.js';
+import { uploadFile, applyTagOverrides } from './api.js';
+import { render } from './screens/archive.js';
+import { renderVoiceList } from './screens/voice.js';
 
-const dropOverlay = document.getElementById('drop-overlay');
-const uploadQueue = document.getElementById('upload-queue');
-const uploadQueueList = document.getElementById('upload-queue-list');
-const uploadBtn = document.getElementById('upload-btn');
-const fileInput = document.getElementById('upload-file-input');
+const AUDIO_RE = /\.(mp3|wav|flac|m4a|aac|ogg)$/i;
+const el = {
+  overlay:$('drop-overlay'),
+  queue:$('upload-queue'), queueList:$('upload-queue-list'),
+};
 
-let dragCounter = 0;
+function segBar(pct){
+  // ████████░░░░ 64%
+  const total=12, filled=Math.round(pct*total);
+  return '█'.repeat(filled)+'░'.repeat(total-filled)+' '+Math.round(pct*100)+'%';
+}
 
-export function setupUpload() {
-  // ── Drag & Drop Events ──
-  window.addEventListener('dragenter', (e) => {
-    e.preventDefault();
-    dragCounter++;
-    if (dragCounter === 1) dropOverlay.style.display = 'flex';
-  });
-
-  window.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    dragCounter--;
-    if (dragCounter === 0) dropOverlay.style.display = 'none';
-  });
-
-  window.addEventListener('dragover', (e) => {
-    e.preventDefault(); // Required to allow drop
-  });
-
-  window.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dragCounter = 0;
-    dropOverlay.style.display = 'none';
-    
-    const files = Array.from(e.dataTransfer.files).filter(f => 
-      f.type.startsWith('audio/') || /\.(mp3|wav|flac|m4a|aac|ogg)$/i.test(f.name)
-    );
-    
-    if (files.length) handleFiles(files);
-  });
-
-  // ── Manual Button Fallback ──
-  if (uploadBtn && fileInput) {
-    uploadBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', (e) => {
-      const files = Array.from(e.target.files);
-      if (files.length) handleFiles(files);
-      fileInput.value = ''; // Reset
-    });
+let activeUploads=0;
+function queueRow(name){
+  el.queue.style.display='block';
+  const row=document.createElement('div');row.className='upload-row';
+  const label=document.createElement('span');label.className='upload-row-name';label.textContent=name;
+  const bar=document.createElement('span');bar.className='upload-row-bar';bar.textContent=segBar(0);
+  row.appendChild(label);row.appendChild(bar);
+  el.queueList.appendChild(row);
+  return { row, bar };
+}
+function maybeHideQueue(){
+  if(activeUploads===0){
+    setTimeout(()=>{
+      if(activeUploads===0){el.queue.style.display='none';el.queueList.innerHTML='';}
+    },2600);
   }
 }
 
-// Global U shortcut
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'u' || e.key === 'U') {
-    if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-      if (fileInput) fileInput.click();
+/* merge a returned track object into live state — new card appears, no reload */
+function mergeTrack(track){
+  track._idx=state.allTracks.length;
+  applyTagOverrides([track]);
+  state.allTracks.push(track);
+  if(isVoiceNote(track)){
+    state.voiceTracks.push(track);
+    if(state.activeScreen==='voice')renderVoiceList();
+  } else {
+    state.groups=buildGroups(state.allTracks.filter(t=>!isVoiceNote(t)));
+    render();
+  }
+  loadAllDurations([track]);
+}
+
+export async function handleFiles(files){
+  const audioFiles=[...files].filter(f=>AUDIO_RE.test(f.name));
+  if(!audioFiles.length){showToast('NO AUDIO FILES');return;}
+  for(const file of audioFiles){
+    const ui=queueRow(file.name);
+    activeUploads++;
+    try{
+      const track=await uploadFile(file,pct=>{ui.bar.textContent=segBar(pct);});
+      ui.bar.textContent=segBar(1)+' ✓';
+      mergeTrack(track);
+    }catch(err){
+      ui.bar.textContent='FAILED — '+(err.message||'ERROR');
+      ui.row.classList.add('upload-failed');
+      showToast('UPLOAD FAILED: '+file.name);
+    }finally{
+      activeUploads--;
+      maybeHideQueue();
     }
   }
+}
+
+/* ── Global drag overlay ── */
+let dragDepth=0;
+window.addEventListener('dragenter',e=>{
+  if(![...e.dataTransfer.types].includes('Files'))return;
+  e.preventDefault();
+  dragDepth++;
+  el.overlay.style.display='flex';
+});
+window.addEventListener('dragover',e=>{e.preventDefault();});
+window.addEventListener('dragleave',e=>{
+  dragDepth=Math.max(0,dragDepth-1);
+  if(dragDepth===0)el.overlay.style.display='none';
+});
+window.addEventListener('drop',e=>{
+  e.preventDefault();
+  dragDepth=0;
+  el.overlay.style.display='none';
+  if(e.dataTransfer.files&&e.dataTransfer.files.length)handleFiles(e.dataTransfer.files);
 });
 
-function handleFiles(files) {
-  uploadQueue.style.display = 'block';
-  
-  files.forEach(file => {
-    const row = document.createElement('div');
-    row.className = 'upload-row';
-    
-    const nameStr = document.createElement('div');
-    nameStr.className = 'upload-row-name';
-    nameStr.textContent = file.name;
-    
-    const bar = document.createElement('div');
-    bar.className = 'upload-row-bar';
-    bar.textContent = '░░░░░░░░░░ 0%';
-    
-    row.appendChild(nameStr);
-    row.appendChild(bar);
-    uploadQueueList.appendChild(row);
-
-    uploadFile(file, (pct) => {
-      // Old-school blocky progress bar
-      const filled = Math.floor(pct / 10);
-      const blocks = '█'.repeat(filled) + '░'.repeat(10 - filled);
-      bar.textContent = `${blocks} ${pct}%`;
-    }).then(trackObj => {
-      bar.textContent = '██████████ 100%';
-      setTimeout(() => row.remove(), 2000);
-      checkQueueEmpty();
-      
-      // Inject new track seamlessly
-      trackObj._idx = state.allTracks.length;
-      state.allTracks.push(trackObj);
-      
-      // Rebuild groups to ensure it shows up in Archive immediately
-      // (Assuming you expose a rebuild/refresh method from main.js)
-      window.dispatchEvent(new CustomEvent('millo-track-uploaded')); 
-      if (state.activeTab === 'archive') renderArchive();
-      
-    }).catch(err => {
-      row.classList.add('upload-failed');
-      bar.textContent = 'FAILED';
-      setTimeout(() => row.remove(), 4000);
-      checkQueueEmpty();
-    });
-  });
+/* ── + button / U key → file picker ── */
+export function openFilePicker(){
+  const input=$('upload-file-input');
+  if(input)input.click();
 }
-
-function checkQueueEmpty() {
-  if (uploadQueueList.children.length === 0) {
-    uploadQueue.style.display = 'none';
-  }
-}
+const uploadBtn=$('upload-btn');
+if(uploadBtn)uploadBtn.addEventListener('click',openFilePicker);
+const fileInput=$('upload-file-input');
+if(fileInput)fileInput.addEventListener('change',()=>{
+  if(fileInput.files.length)handleFiles(fileInput.files);
+  fileInput.value='';
+});
