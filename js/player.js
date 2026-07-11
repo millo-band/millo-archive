@@ -12,6 +12,7 @@ import {
 import {
   notes, noteFor, saveNote, getPlaylists, createPlaylist, addSongToPlaylist,
   removeSongFromPlaylist, isSongInPlaylist, isFavorite, toggleFavorite, setTagOverride,
+  getLyrics, setLyrics,
 } from './api.js';
 import { generatePixelArt } from './art.js';
 import { Waveform, ensurePeaks } from './waveform.js';
@@ -32,6 +33,7 @@ const el = {
   downloadBtn:$('download-btn'),
   playerListChips:$('player-list-chips'),
   playerNote:$('player-note'), noteStatus:$('note-status'),
+  playerLyrics:$('player-lyrics'), lyricsStatus:$('lyrics-status'),
   playerVolume:$('player-volume'), volPct:$('vol-pct'),
   playerTitle:$('player-title'), playerStage:$('player-stage'),
   playerExpandBtn:$('player-expand-btn'),
@@ -114,6 +116,7 @@ export function updatePlayerBar(track,group){
     el.downloadBtn.style.display='none';
     if(el.playerShareBtn)el.playerShareBtn.style.display='none';
     el.playerNote.value='';el.playerNote.disabled=true;
+    if(el.playerLyrics){el.playerLyrics.value='';el.playerLyrics.disabled=true;lyricsSongKey=null;}
     el.playerVersionsList.innerHTML='';
     if(el.tabBtnVersions)el.tabBtnVersions.style.display='none';
     if(el.playerListChips)el.playerListChips.innerHTML='';
@@ -141,6 +144,14 @@ export function updatePlayerBar(track,group){
   el.noteStatus.textContent='';
   renderNoteLog();
   updateNoteFlags();
+
+  // Lyrics (song-level: same words across every version)
+  if(el.playerLyrics){
+    lyricsSongKey=(group?group.title:track.title).toLowerCase();
+    el.playerLyrics.value=getLyrics(lyricsSongKey);
+    el.playerLyrics.disabled=false;
+    el.lyricsStatus.textContent='';
+  }
 
   updatePlayerArtwork(track);
 
@@ -389,6 +400,21 @@ if(el.noteInput){
     e.stopPropagation();
     if(e.key==='Enter'){e.preventDefault();commitTimedNote();}
     if(e.key==='Escape'){e.preventDefault();cancelTimedNote();}
+  });
+}
+
+/* ── Lyrics (song-level, debounced save; server-synced via state) ── */
+let lyricsSongKey=null, lyricsTimer=null;
+if(el.playerLyrics){
+  el.playerLyrics.addEventListener('keydown',e=>e.stopPropagation()); // don't trip player shortcuts
+  el.playerLyrics.addEventListener('input',()=>{
+    if(!lyricsSongKey)return;
+    if(el.lyricsStatus)el.lyricsStatus.textContent='…';
+    clearTimeout(lyricsTimer);
+    lyricsTimer=setTimeout(()=>{
+      setLyrics(lyricsSongKey,el.playerLyrics.value);
+      if(el.lyricsStatus){el.lyricsStatus.textContent='SAVED';setTimeout(()=>{el.lyricsStatus.textContent='';},1800);}
+    },800);
   });
 }
 

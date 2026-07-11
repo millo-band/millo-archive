@@ -47,7 +47,7 @@ function setSync(status){ // 'SYNCED' | 'SYNCING…' | 'OFFLINE' | 'LOCAL'
 }
 
 /* ── Server state (playlists / favorites / tagOverrides / voiceLinks) ── */
-export const serverState = { playlists:{}, favorites:[], tagOverrides:{}, voiceLinks:{} };
+export const serverState = { playlists:{}, favorites:[], tagOverrides:{}, voiceLinks:{}, lyrics:{} };
 let serverReachable = false;
 
 function readLocal(key, fallback){ try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; } }
@@ -57,11 +57,13 @@ function localLegacy(){
     favorites:    readLocal(FAVORITES_KEY, []),
     tagOverrides: readLocal(TAG_OVERRIDES_KEY, {}),
     voiceLinks:   {},
+    lyrics:       {},
   };
 }
 function hasData(s){
   return Object.keys(s.playlists||{}).length || (s.favorites||[]).length ||
-         Object.keys(s.tagOverrides||{}).length || Object.keys(s.voiceLinks||{}).length;
+         Object.keys(s.tagOverrides||{}).length || Object.keys(s.voiceLinks||{}).length ||
+         Object.keys(s.lyrics||{}).length;
 }
 
 /* Boot: fetch /state; migrate localStorage up once if server is empty (§3.3). */
@@ -76,6 +78,7 @@ export async function loadServerState(){
     Object.assign(serverState, {
       playlists: remote.playlists || {}, favorites: remote.favorites || [],
       tagOverrides: remote.tagOverrides || {}, voiceLinks: remote.voiceLinks || {},
+      lyrics: remote.lyrics || {},
     });
     setSync('SYNCED');
   } else {
@@ -183,6 +186,16 @@ export function getVoiceLinks(){ return serverState.voiceLinks; }
 export function setVoiceLink(voiceFilename, songKey){
   if (songKey) serverState.voiceLinks[voiceFilename] = songKey;
   else delete serverState.voiceLinks[voiceFilename];
+  saved();
+}
+
+/* ── Lyrics (song-level: shared across all versions, keyed by songKey) ── */
+export function getLyrics(songKey){ return (serverState.lyrics && serverState.lyrics[songKey]) || ''; }
+export function setLyrics(songKey, text){
+  if (!serverState.lyrics) serverState.lyrics = {};
+  const t = (text || '').replace(/\s+$/, '');
+  if (t) serverState.lyrics[songKey] = t;
+  else delete serverState.lyrics[songKey];
   saved();
 }
 

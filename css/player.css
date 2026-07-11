@@ -349,6 +349,19 @@ body.player-expanded .player-close-btn:hover { opacity: 1; }
 .note-footer { display: flex; justify-content: flex-end; padding: 0 16px 4px; flex-shrink: 0; }
 .note-status { font-size: 8px; opacity: 0.4; letter-spacing: 0.05em; }
 
+/* ── LYRICS — song-wide sheet, fills the tab ─── */
+.player-lyrics {
+  flex: 1; min-height: 88px; overflow-y: auto;
+  resize: none; background: none; border: none; outline: none;
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.85;
+  color: var(--black); caret-color: var(--black);
+  padding: 12px 18px 4px; white-space: pre-wrap;
+}
+.player-lyrics::placeholder { opacity: 0.22; }
+.player-lyrics:disabled { opacity: 0.22; cursor: default; }
+#tab-lyrics .note-footer { justify-content: space-between; align-items: center; }
+.lyrics-scope-hint { font-size: 8px; opacity: 0.35; letter-spacing: 0.08em; }
+
 /* ── TIMED NOTES — terminal log (§5.2) ─────── */
 .note-log {
   flex: 1; min-height: 0; overflow-y: auto;

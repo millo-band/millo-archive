@@ -405,6 +405,7 @@
       <div class="player-bottom-section">
         <div class="player-tabs" id="player-tabs">
           <button class="ptab active" data-tab="notes">NOTES</button>
+          <button class="ptab" data-tab="lyrics" id="tab-btn-lyrics">LYRICS</button>
           <button class="ptab" data-tab="versions" id="tab-btn-versions" style="display:none">VERSIONS</button>
           <button class="ptab" data-tab="queue" id="tab-btn-queue">QUEUE</button>
         </div>
@@ -420,6 +421,13 @@
               <input type="text" id="note-input" class="note-input" placeholder=" " autocomplete="off" spellcheck="false" maxlength="200" />
               <span class="note-cursor" aria-hidden="true"></span>
             </div>
+          </div>
+        </div>
+        <div class="ptab-panel" id="tab-lyrics" data-label="LYRICS">
+          <textarea id="player-lyrics" class="player-lyrics" placeholder="No lyrics yet. Tap to write..." spellcheck="false" disabled></textarea>
+          <div class="note-footer">
+            <span class="note-status" id="lyrics-status"></span>
+            <span class="lyrics-scope-hint">SONG-WIDE · ALL VERSIONS</span>
           </div>
         </div>
         <div class="ptab-panel" id="tab-versions" data-label="VERSIONS">

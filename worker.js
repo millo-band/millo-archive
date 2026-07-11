@@ -13,7 +13,7 @@
  *   GET    /            → list all tracks from R2
  *   GET    /notes       → merged notes { filename: { general, timed:[{t,text,created}] } }
  *   POST   /notes       → save { filename, general?, timed? }  (legacy { filename, note } still accepted)
- *   GET    /state       → app state { playlists, favorites, tagOverrides, voiceLinks, updated }
+ *   GET    /state       → app state { playlists, favorites, tagOverrides, voiceLinks, lyrics, updated }
  *   POST   /state       → replace app state (last-write-wins, single user)
  *   GET    /peaks?f=    → [0-7 × ~200] quantized waveform peaks for one file (null if none)
  *   POST   /peaks       → save { filename, peaks }
@@ -78,7 +78,7 @@ export default {
       }
     }
 
-    // ── App state (playlists / favorites / tag overrides / voice links) ──
+    // ── App state (playlists / favorites / tag overrides / voice links / lyrics) ──
     if (url.pathname === '/state') {
       if (request.method === 'GET') {
         const val = await env.MILLO_NOTES.get('state');
