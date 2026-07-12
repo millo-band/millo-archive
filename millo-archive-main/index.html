@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <title>MILLO — ARCHIVE</title>
+
+  <link rel="icon" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+  <meta property="og:title" content="MILLO — ARCHIVE" />
+  <meta property="og:description" content="Personal music archive. Demos, ideas, finished tracks." />
+  <meta property="og:image" content="og-image.jpg" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/player.css" />
+  <link rel="stylesheet" href="css/screens.css" />
+</head>
+<body data-screen="archive">
+  <script>
+    /* Apply saved theme before paint to avoid a flash.
+       Default = light (pink). Falls back to OS preference on first visit. */
+    (function(){
+      try {
+        var t = localStorage.getItem('millo-theme');
+        if (!t) t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+        if (t === 'dark') document.body.classList.add('dark');
+      } catch(e){}
+    })();
+  </script>
+
+  <!-- CRT overlays (dark mode only) -->
+  <div class="crt-scanlines" aria-hidden="true"></div>
+  <div class="crt-vignette" aria-hidden="true"></div>
+
+  <header id="site-header">
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="header-title-block">
+          <div class="header-title-row">
+            <span class="site-title">MILLO</span>
+            <span class="site-sub">ARCHIVE</span>
+          </div>
+          <div class="header-stats-row">
+            <div class="header-stats" id="header-stats"></div>
+            <span class="sync-indicator" id="sync-indicator"></span>
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <svg class="ico-light" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.5 9.2A5.5 5.5 0 0 1 6.8 2.5 5.5 5.5 0 1 0 13.5 9.2Z" fill="currentColor"/></svg>
+          <svg class="ico-dark" width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="3.2" fill="currentColor"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="square"><line x1="8" y1="0.5" x2="8" y2="2.5"/><line x1="8" y1="13.5" x2="8" y2="15.5"/><line x1="0.5" y1="8" x2="2.5" y2="8"/><line x1="13.5" y1="8" x2="15.5" y2="8"/><line x1="2.5" y1="2.5" x2="3.9" y2="3.9"/><line x1="12.1" y1="12.1" x2="13.5" y2="13.5"/><line x1="13.5" y1="2.5" x2="12.1" y2="3.9"/><line x1="3.9" y1="12.1" x2="2.5" y2="13.5"/></g></svg>
+        </button>
+        <button class="shuffle-radio-btn" id="shuffle-radio-btn">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M1 4h8M6 1l3 3-3 3M15 12H7M10 9l3 3-3 3M1 12h2a4 4 0 0 1 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"/></svg>
+          RADIO
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Controls (ARCHIVE tab only) -->
+  <nav id="controls-bar">
+    <div id="controls-left">
+      <div class="dropdown" id="sort-dropdown">
+        <button class="dropdown-btn" id="sort-btn-toggle">
+          <span id="sort-label">NEWEST</span>
+          <svg width="8" height="8" viewBox="0 0 8 8"><polygon points="0,2 8,2 4,7" fill="currentColor"/></svg>
+        </button>
+        <div class="dropdown-menu" id="sort-menu">
+          <button class="dropdown-item active" data-sort="newest">NEWEST</button>
+          <button class="dropdown-item" data-sort="oldest">OLDEST</button>
+        </div>
+      </div>
+      <button class="icon-btn" id="search-btn" aria-label="Search">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+          <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.8"/>
+          <line x1="10.5" y1="10.5" x2="15" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="upload-btn" aria-label="Upload" title="Upload (U)">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="7" y1="13" x2="7" y2="4" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><polyline points="4,6 7,3 10,6" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><line x1="2" y1="1" x2="12" y2="1" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
+      </button>
+      <button class="edit-mode-btn" id="edit-mode-btn">EDIT</button>
+    </div>
+  </nav>
+
+  <!-- Stage chips — one tap, dither swatch = stage texture (§4) -->
+  <div id="stage-chips-bar">
+    <button class="stage-chip active" data-filter="all">ALL</button>
+    <button class="stage-chip" data-filter="idea"><span class="dither-swatch dither-25"></span>IDEA</button>
+    <button class="stage-chip" data-filter="demo"><span class="dither-swatch dither-50"></span>DEMO</button>
+    <button class="stage-chip" data-filter="finished"><span class="dither-swatch dither-75"></span>FIN</button>
+    <button class="stage-chip" data-filter="complete"><span class="dither-swatch dither-100"></span>COMP</button>
+    <button class="stage-chip stage-chip-star" data-filter="starred">★</button>
+  </div>
+
+  <div id="search-bar" style="display:none">
+    <input type="search" id="search-input" placeholder="SEARCH TRACKS..." autocomplete="off" spellcheck="false" />
+    <button class="search-clear" id="search-clear" aria-label="Clear">✕</button>
+  </div>
+
+  <div id="mass-edit-bar" style="display:none">
+    <span class="mass-edit-count" id="mass-edit-count">0 SELECTED</span>
+    <div class="mass-edit-tags">
+      <span class="mass-edit-label">SET TAG:</span>
+      <button class="mass-tag-btn" data-stage="idea">IDEA</button>
+      <button class="mass-tag-btn" data-stage="demo">DEMO</button>
+      <button class="mass-tag-btn" data-stage="finished">FIN</button>
+      <button class="mass-tag-btn" data-stage="complete">COMP</button>
+    </div>
+    <div class="mass-edit-tags">
+      <span class="mass-edit-label">ADD TO:</span>
+      <div class="dropdown" id="mass-list-dropdown">
+        <button class="mass-list-btn" id="mass-list-btn">+ ALBUM
+          <svg width="7" height="7" viewBox="0 0 8 8"><polygon points="0,2 8,2 4,7" fill="currentColor"/></svg>
+        </button>
+        <div class="dropdown-menu" id="mass-list-menu"></div>
+      </div>
+    </div>
+    <button class="mass-edit-done" id="mass-edit-done">DONE</button>
+  </div>
+
+  <main id="main-content">
+
+    <!-- ══ ARCHIVE ══ -->
+    <section id="screen-archive" class="screen active">
+      <section id="whats-new" style="display:none">
+        <div class="section-label">WHAT'S NEW</div>
+        <div id="new-tracks-row"></div>
+      </section>
+      <div id="loading-state"><span class="loading-text">LOADING...</span></div>
+      <div id="empty-state" style="display:none"><span class="loading-text">NO TRACKS FOUND</span></div>
+      <div id="tracks-grid"></div>
+    </section>
+
+    <!-- ══ ALBUMS ══ -->
+    <section id="screen-albums" class="screen">
+      <div id="albums-index">
+        <div class="screen-header-row">
+          <span class="screen-title">ALBUMS</span>
+          <button class="overlay-action-btn" id="new-playlist-btn">+ NEW</button>
+        </div>
+        <div id="playlists-body"></div>
+      </div>
+
+      <div id="albums-detail" style="display:none">
+        <div class="screen-header-row">
+          <button class="overlay-back-btn" id="playlist-detail-back-btn">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="8,1 3,6 8,11" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
+            ALBUMS
+          </button>
+          <span class="screen-title">WORKBENCH</span>
+        </div>
+
+        <div class="pl-two-column">
+          <div class="pl-col-left">
+            <div class="pl-col-left-inner">
+              <canvas id="pl-detail-canvas" class="pl-detail-art" width="180" height="180"></canvas>
+              <div class="pl-detail-title" id="playlist-detail-title"></div>
+              <div class="pl-stats-bar" id="playlist-stats-bar" style="display:none">
+                <span class="pl-stats-count" id="playlist-stats-count"></span>
+                <span class="pl-stats-sep">·</span>
+                <span class="pl-stats-dur" id="playlist-stats-dur"></span>
+              </div>
+              <div id="playlist-readiness"></div>
+              <div class="album-target-row" id="album-target-row">
+                <label class="album-target-label">TARGET
+                  <input type="number" min="1" max="99" id="album-target-input" class="album-target-input" placeholder="--" />
+                </label>
+                <label class="album-target-label">RUNTIME
+                  <input type="text" id="album-target-runtime" class="album-target-input album-target-runtime" placeholder="35:00" />
+                </label>
+              </div>
+              <button class="pl-play-all-btn" id="playlist-play-all-btn">
+                <svg width="11" height="11" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>
+                PLAY ALL
+              </button>
+            </div>
+          </div>
+          <div class="pl-col-right" id="playlist-detail-body"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ VAULT ══ -->
+    <section id="screen-vault" class="screen">
+      <div id="vault-body"></div>
+    </section>
+
+    <!-- ══ VOICE ══ -->
+    <section id="screen-voice" class="screen">
+      <div id="voice-list" class="visible"></div>
+    </section>
+
+  </main>
+
+  <!-- ══ BOTTOM TAB BAR (§4) ══ -->
+  <nav id="tabbar">
+    <button class="tabbar-btn active" data-screen="archive">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" stroke="currentColor" stroke-width="2"/><rect x="9" y="1" width="6" height="6" stroke="currentColor" stroke-width="2"/><rect x="1" y="9" width="6" height="6" stroke="currentColor" stroke-width="2"/><rect x="9" y="9" width="6" height="6" stroke="currentColor" stroke-width="2"/></svg>
+      <span>ARCHIVE</span>
+    </button>
+    <button class="tabbar-btn" data-screen="albums">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="2"/><rect x="7" y="7" width="2" height="2" fill="currentColor"/></svg>
+      <span>ALBUMS</span>
+    </button>
+    <button class="tabbar-btn" data-screen="vault">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="11" stroke="currentColor" stroke-width="2"/><polyline points="5,3 5,1 11,1 11,3" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><line x1="8" y1="7" x2="8" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
+      <span>VAULT</span>
+    </button>
+    <button class="tabbar-btn" data-screen="voice">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="6" y="1" width="4" height="8" stroke="currentColor" stroke-width="2"/><path d="M3 8a5 5 0 0 0 10 0" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
+      <span>VOICE</span>
+    </button>
+  </nav>
+
+  <!-- ══ PLAYER BACKDROP ══ -->
+  <div id="player-backdrop" class="player-backdrop"></div>
+
+  <!-- ══ UNIVERSAL FLOATING PLAYER ══ -->
+  <div id="player-bar">
+
+    <!-- HANDLE -->
+    <div class="player-handle-row hide-on-desktop">
+      <button class="player-handle-btn" id="player-toggle-btn" aria-label="Toggle player">
+        <div class="player-handle-notch"></div>
+      </button>
+      <button class="player-close-btn" id="player-close-btn" aria-label="Close player">✕</button>
+    </div>
+
+    <!-- MINI STRIP -->
+    <div class="player-mini" id="player-expand-btn">
+      <div class="player-mini-prog hide-on-desktop">
+        <div class="player-mini-prog-fill" id="player-mini-fill"></div>
+      </div>
+      <div class="player-mini-row">
+
+        <div class="player-mini-info">
+          <canvas id="mini-art-canvas" class="mini-art-canvas" width="64" height="64"></canvas>
+          <div class="player-mini-text-block">
+            <span class="player-title" id="player-title">— SELECT A TRACK —</span>
+            <span class="player-stage" id="player-stage"></span>
+          </div>
+        </div>
+
+        <div class="desktop-scrub-zone hide-on-mobile desktop-flex">
+          <div class="desktop-scrub-controls">
+            <button class="mini-ctrl" id="mini-btn-prev2" aria-label="Previous">
+              <svg width="13" height="13" viewBox="0 0 12 12"><polygon points="11,1 11,11 1,6" fill="currentColor"/><rect x="0" y="1" width="2" height="10" fill="currentColor"/></svg>
+            </button>
+            <button class="mini-ctrl mini-play" id="mini-btn-play2" aria-label="Play">
+              <svg class="mini-icon-play2" width="17" height="17" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>
+              <svg class="mini-icon-pause2" width="17" height="17" viewBox="0 0 16 16" style="display:none"><rect x="1" y="1" width="5" height="14" fill="currentColor"/><rect x="10" y="1" width="5" height="14" fill="currentColor"/></svg>
+            </button>
+            <button class="mini-ctrl" id="mini-btn-next2" aria-label="Next">
+              <svg width="13" height="13" viewBox="0 0 12 12"><polygon points="1,1 1,11 11,6" fill="currentColor"/><rect x="10" y="1" width="2" height="10" fill="currentColor"/></svg>
+            </button>
+          </div>
+          <div class="desktop-scrub-track-wrap">
+            <span class="desktop-time" id="desktop-time-cur">0:00</span>
+            <canvas id="desktop-wave-canvas" class="wave-canvas wave-canvas-desktop"></canvas>
+            <span class="desktop-time right" id="desktop-time-dur">0:00</span>
+          </div>
+        </div>
+
+        <div class="player-mini-controls">
+          <button class="mini-ctrl pctrl-loop hide-on-mobile desktop-flex" id="mini-btn-loop" aria-label="Loop" title="Loop">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 10a6 6 0 1 0 1.5-4" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><polyline points="1,4 3.5,6.5 6,4" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
+          </button>
+          <a class="mini-ctrl pctrl-download hide-on-mobile desktop-flex" id="mini-btn-download" aria-label="Download" title="Download">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><line x1="7" y1="1" x2="7" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><polyline points="4,7 7,10 10,7" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><polyline points="2,12 2,13 12,13 12,12" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
+          </a>
+          <button class="mini-ctrl pctrl-share hide-on-mobile desktop-flex" id="mini-btn-share" aria-label="Share" title="Share">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="13" cy="3" r="2" stroke="currentColor" stroke-width="2"/><circle cx="3" cy="8" r="2" stroke="currentColor" stroke-width="2"/><circle cx="13" cy="13" r="2" stroke="currentColor" stroke-width="2"/><line x1="5" y1="9" x2="11" y2="12" stroke="currentColor" stroke-width="2"/><line x1="11" y1="4" x2="5" y2="7" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+          <input type="range" id="mini-vol-slider" class="vol-slider hide-on-mobile desktop-block" min="0" max="1" step="0.05" value="1" title="Volume">
+
+          <button class="mini-ctrl show-on-mobile" id="mini-btn-prev" aria-label="Previous">
+            <svg width="14" height="14" viewBox="0 0 12 12"><polygon points="11,1 11,11 1,6" fill="currentColor"/><rect x="0" y="1" width="2" height="10" fill="currentColor"/></svg>
+          </button>
+          <button class="mini-ctrl mini-play show-on-mobile" id="mini-btn-play" aria-label="Play">
+            <svg id="mini-icon-play" width="18" height="18" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>
+            <svg id="mini-icon-pause" width="18" height="18" viewBox="0 0 16 16" style="display:none"><rect x="1" y="1" width="5" height="14" fill="currentColor"/><rect x="10" y="1" width="5" height="14" fill="currentColor"/></svg>
+          </button>
+          <button class="mini-ctrl show-on-mobile" id="mini-btn-next" aria-label="Next">
+            <svg width="14" height="14" viewBox="0 0 12 12"><polygon points="1,1 1,11 11,6" fill="currentColor"/><rect x="10" y="1" width="2" height="10" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPANDED CONTENT -->
+    <div class="player-full" id="player-full">
+      <div class="player-desktop-close-row">
+        <span class="player-desktop-panel-label">NOW PLAYING</span>
+        <button class="player-close-btn player-desktop-close-x" id="player-close-btn2" aria-label="Close">✕</button>
+      </div>
+
+      <!-- Art + Track info -->
+      <div class="player-top-row">
+        <canvas id="player-art-canvas" class="player-art-canvas" width="64" height="64"></canvas>
+        <div class="player-track-info">
+          <div class="player-track-title-row">
+            <span class="player-title-lg" id="player-title-lg">SELECT A TRACK</span>
+            <button class="player-fav-btn" id="player-fav-btn" aria-label="Favourite">★</button>
+            <button class="player-share-btn" id="player-share-btn" aria-label="Share" style="display:none">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="13" cy="3" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="3" cy="8" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="13" r="2" stroke="currentColor" stroke-width="1.8"/><line x1="5" y1="9" x2="11" y2="12" stroke="currentColor" stroke-width="1.8"/><line x1="11" y1="4" x2="5" y2="7" stroke="currentColor" stroke-width="1.8"/></svg>
+            </button>
+          </div>
+          <div class="player-track-meta">
+            <span class="player-stage-lg" id="player-stage-lg"></span>
+            <span class="player-filename-lg" id="player-filename-lg"></span>
+          </div>
+          <div class="player-playlist-row" id="player-playlist-row" style="display:none">
+            <svg width="9" height="9" viewBox="0 0 16 14" fill="none"><line x1="0" y1="1" x2="10" y2="1" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><line x1="0" y1="5" x2="10" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><line x1="0" y1="9" x2="7" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="square"/><polygon points="12,4 16,6.5 12,9" fill="currentColor"/></svg>
+            <span id="player-playlist-name"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pixel waveform scrubber (§5.1) -->
+      <div class="player-scrub-section">
+        <div class="wave-wrap">
+          <div class="wave-flags" id="wave-flags"></div>
+          <canvas id="wave-canvas" class="wave-canvas"></canvas>
+        </div>
+        <div class="player-time-row">
+          <span class="player-time" id="player-time">0:00</span>
+          <span class="player-dur" id="player-dur">0:00</span>
+        </div>
+      </div>
+
+      <!-- Main controls -->
+      <div class="player-controls-main">
+        <button class="pctrl-btn pctrl-loop" id="btn-loop" aria-label="Loop">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 10a6 6 0 1 0 1.5-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/><polyline points="1,4 3.5,6.5 6,4" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"/></svg>
+        </button>
+        <button class="pctrl-btn pctrl-skip" id="btn-prev" aria-label="Previous">
+          <svg width="20" height="20" viewBox="0 0 12 12"><polygon points="11,1 11,11 1,6" fill="currentColor"/><rect x="0" y="1" width="2" height="10" fill="currentColor"/></svg>
+        </button>
+        <button class="pctrl-btn pctrl-play" id="btn-play" aria-label="Play/Pause">
+          <svg id="icon-play" width="28" height="28" viewBox="0 0 16 16"><polygon points="2,1 2,15 14,8" fill="currentColor"/></svg>
+          <svg id="icon-pause" width="28" height="28" viewBox="0 0 16 16" style="display:none"><rect x="1" y="1" width="5" height="14" fill="currentColor"/><rect x="10" y="1" width="5" height="14" fill="currentColor"/></svg>
+        </button>
+        <button class="pctrl-btn pctrl-skip" id="btn-next" aria-label="Next">
+          <svg width="20" height="20" viewBox="0 0 12 12"><polygon points="1,1 1,11 11,6" fill="currentColor"/><rect x="10" y="1" width="2" height="10" fill="currentColor"/></svg>
+        </button>
+        <a class="pctrl-btn pctrl-download" id="download-btn" aria-label="Download" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><line x1="8" y1="1" x2="8" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/><polyline points="4,8 8,12 12,8" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"/><line x1="2" y1="15" x2="14" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/></svg>
+        </a>
+      </div>
+
+      <!-- A/B compare switch (§5.3) — appears when both slots armed -->
+      <div class="ab-switch-wrap" id="ab-switch-wrap" style="display:none">
+        <span class="ab-side-label">A</span>
+        <button class="ab-toggle" id="ab-switch" aria-label="Flip A/B">
+          <span class="ab-thumb"></span>
+        </button>
+        <span class="ab-side-label">B</span>
+        <span class="ab-hint">X = FLIP</span>
+      </div>
+
+      <!-- Tag editor + Album editor + UTIL disclosure (§5.4) -->
+      <div class="player-utilities">
+        <div class="player-tag-row" id="player-tag-row">
+          <span class="util-label">TAG</span>
+          <button class="tag-edit-btn" data-stage="idea"><span class="dither-swatch dither-25"></span>IDEA</button>
+          <button class="tag-edit-btn" data-stage="demo"><span class="dither-swatch dither-50"></span>DEMO</button>
+          <button class="tag-edit-btn" data-stage="finished"><span class="dither-swatch dither-75"></span>FINISHED</button>
+          <button class="tag-edit-btn" data-stage="complete"><span class="dither-swatch dither-100"></span>COMPLETE</button>
+        </div>
+        <div class="player-playlist-add-row" id="player-playlist-add-row">
+          <span class="util-label">ALBUM</span>
+          <div class="player-list-chips" id="player-list-chips"></div>
+        </div>
+        <button class="util-disclosure" id="util-toggle">UTIL ▸</button>
+        <div id="util-body" style="display:none">
+          <div class="player-vol-row">
+            <span class="util-label">VOL</span>
+            <button class="vol-btn" id="vol-down">−</button>
+            <input type="range" id="player-volume" class="vol-slider" min="0" max="1" step="0.05" value="1">
+            <button class="vol-btn" id="vol-up">+</button>
+            <span class="vol-pct" id="vol-pct">100%</span>
+          </div>
+          <div class="player-speed-row" id="player-speed-row">
+            <span class="util-label">SPEED</span>
+            <button class="speed-btn" data-speed="0.5">0.5×</button>
+            <button class="speed-btn" data-speed="0.75">0.75×</button>
+            <button class="speed-btn active" data-speed="1">1×</button>
+            <button class="speed-btn" data-speed="1.25">1.25×</button>
+            <button class="speed-btn" data-speed="1.5">1.5×</button>
+            <button class="speed-btn" data-speed="2">2×</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes (terminal log) + Versions + Queue -->
+      <div class="player-bottom-section">
+        <div class="player-tabs" id="player-tabs">
+          <button class="ptab active" data-tab="notes">NOTES</button>
+          <button class="ptab" data-tab="lyrics" id="tab-btn-lyrics">LYRICS</button>
+          <button class="ptab" data-tab="versions" id="tab-btn-versions" style="display:none">VERSIONS</button>
+          <button class="ptab" data-tab="queue" id="tab-btn-queue">QUEUE</button>
+        </div>
+        <div class="ptab-panel active" id="tab-notes" data-label="NOTES">
+          <textarea id="player-note" class="player-note" placeholder="No note yet. Tap to add one..." disabled></textarea>
+          <div class="note-footer">
+            <span class="note-status" id="note-status"></span>
+          </div>
+          <div class="note-log" id="note-log"></div>
+          <div class="note-input-row" id="note-input-row">
+            <button class="note-add-btn" id="note-add-btn">+ NOTE @ <span id="note-add-time">0:00</span></button>
+            <div class="note-input-wrap">
+              <input type="text" id="note-input" class="note-input" placeholder=" " autocomplete="off" spellcheck="false" maxlength="200" />
+              <span class="note-cursor" aria-hidden="true"></span>
+            </div>
+          </div>
+        </div>
+        <div class="ptab-panel" id="tab-lyrics" data-label="LYRICS">
+          <textarea id="player-lyrics" class="player-lyrics" placeholder="No lyrics yet. Tap to write..." spellcheck="false" disabled></textarea>
+          <div class="note-footer">
+            <span class="note-status" id="lyrics-status"></span>
+            <span class="lyrics-scope-hint">SONG-WIDE · ALL VERSIONS</span>
+          </div>
+        </div>
+        <div class="ptab-panel" id="tab-versions" data-label="VERSIONS">
+          <div class="player-versions-list" id="player-versions"></div>
+          <div class="no-versions-msg" id="no-versions-msg" style="display:none">No other versions.</div>
+        </div>
+        <div class="ptab-panel" id="tab-queue" data-label="QUEUE">
+          <div class="player-queue-list" id="player-queue-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SONG PAGE OVERLAY (leaf node) ══ -->
+  <div id="song-page" class="overlay-page" style="display:none">
+    <div class="overlay-header">
+      <button class="overlay-back-btn" id="song-back-btn">
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="8,1 3,6 8,11" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
+        BACK
+      </button>
+      <span class="overlay-page-title" id="song-page-title"></span>
+      <button class="overlay-share-btn" id="song-share-btn">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="13" cy="3" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="3" cy="8" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="13" r="2" stroke="currentColor" stroke-width="1.8"/><line x1="5" y1="9" x2="11" y2="12" stroke="currentColor" stroke-width="1.8"/><line x1="11" y1="4" x2="5" y2="7" stroke="currentColor" stroke-width="1.8"/></svg>
+        SHARE
+      </button>
+    </div>
+    <div class="overlay-body" id="song-page-body"></div>
+  </div>
+
+  <!-- ══ DROP OVERLAY (§6.2) ══ -->
+  <div id="drop-overlay" style="display:none">
+    <div class="drop-inner">
+      <div class="drop-title">DROP TO ARCHIVE</div>
+      <div class="drop-tip">TIP: name-d-v2.mp3 → DEMO V2</div>
+    </div>
+  </div>
+
+  <!-- ══ UPLOAD QUEUE ══ -->
+  <div id="upload-queue" style="display:none">
+    <div class="upload-queue-title">UPLOADING</div>
+    <div id="upload-queue-list"></div>
+  </div>
+
+  <!-- ══ KEYBOARD MAP (§7) ══ -->
+  <div id="help-overlay" style="display:none">
+    <div class="help-panel">
+      <div class="help-header">
+        <span class="help-title">KEYBOARD</span>
+        <button class="player-close-btn help-close" id="help-close" style="opacity:.5;pointer-events:all;position:static;padding:4px 8px">✕</button>
+      </div>
+      <div class="help-cols">
+        <div class="help-col">
+          <div class="help-line"><b>SPACE</b> PLAY / PAUSE</div>
+          <div class="help-line"><b>← →</b> PREV / NEXT</div>
+          <div class="help-line"><b>, .</b> SEEK ±5S</div>
+          <div class="help-line"><b>↑ ↓</b> VOLUME</div>
+          <div class="help-line"><b>[ ]</b> SPEED</div>
+          <div class="help-line"><b>L</b> LOOP</div>
+          <div class="help-line"><b>X</b> A/B FLIP</div>
+        </div>
+        <div class="help-col">
+          <div class="help-line"><b>/</b> SEARCH</div>
+          <div class="help-line"><b>N</b> NOTE @ PLAYHEAD</div>
+          <div class="help-line"><b>U</b> UPLOAD</div>
+          <div class="help-line"><b>1</b> ARCHIVE</div>
+          <div class="help-line"><b>2</b> ALBUMS</div>
+          <div class="help-line"><b>3</b> VAULT</div>
+          <div class="help-line"><b>4</b> VOICE</div>
+          <div class="help-line"><b>ESC</b> BACK</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ VOICE → SONG PICKER (§6.5) ══ -->
+  <div id="voice-picker" style="display:none">
+    <div class="voice-picker-panel">
+      <div class="help-header">
+        <span class="help-title">LINK TO SONG</span>
+        <button class="player-close-btn help-close" id="voice-picker-close" style="opacity:.5;pointer-events:all;position:static;padding:4px 8px">✕</button>
+      </div>
+      <input type="search" id="voice-picker-input" class="voice-picker-search" placeholder="SEARCH SONGS..." autocomplete="off" spellcheck="false" />
+      <div id="voice-picker-list"></div>
+    </div>
+  </div>
+
+  <input type="file" id="upload-file-input" accept=".mp3,.wav,.flac,.m4a,.aac,.ogg,audio/*" multiple style="display:none" />
+
+  <audio id="audio-player" preload="none"></audio>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
