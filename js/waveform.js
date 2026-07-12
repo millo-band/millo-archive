@@ -9,6 +9,25 @@ import { getPeaks, postPeaks, cachePeaks } from './api.js';
 const BUCKETS = 200;
 const instances = [];
 
+/* Deterministic placeholder waveform from the filename — so a track ALWAYS shows a
+   waveform instantly, even before (or without) a real decode. Real decoded peaks
+   replace this the moment they're available. Stable per-file, natural-looking envelope. */
+export function synthPeaks(seed) {
+  let h = 2166136261;
+  const s = String(seed || '');
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const rand = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 1000) / 1000; };
+  const out = new Array(BUCKETS);
+  for (let i = 0; i < BUCKETS; i++) {
+    const t = i / BUCKETS;
+    // fade in/out envelope + a couple of slow swells so it reads like a real track
+    const env = Math.sin(Math.PI * t) * (0.55 + 0.45 * Math.sin(t * 7 + rand() * 2));
+    const jitter = 0.35 + rand() * 0.65;
+    out[i] = Math.max(1, Math.min(7, Math.round(Math.abs(env) * jitter * 7)));
+  }
+  return out;
+}
+
 export class Waveform {
   constructor(canvas, opts) {
     this.canvas = canvas;
@@ -25,7 +44,11 @@ export class Waveform {
     if (window.ResizeObserver) new ResizeObserver(() => this.render()).observe(canvas);
   }
 
-  setPeaks(peaks) { this.peaks = Array.isArray(peaks) && peaks.length ? peaks : null; this.render(); }
+  setPeaks(peaks, provisional) {
+    this.peaks = Array.isArray(peaks) && peaks.length ? peaks : null;
+    this.provisional = !!provisional;   // synthetic placeholder → render a touch lighter
+    this.render();
+  }
 
   setProgress(pct) {
     if (this.scrubbing) return;
@@ -71,7 +94,7 @@ export class Waveform {
       const barH = Math.round(level / 8 * (h - 2));
       const y = Math.round((h - barH) / 2);
       if (x + barW <= playedX) {
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = this.provisional ? 0.62 : 1;   // provisional placeholder reads lighter
         ctx.fillRect(x, y, barW, barH);
       } else {
         // unplayed: 50% dither — 2px checkerboard cells inside the bar

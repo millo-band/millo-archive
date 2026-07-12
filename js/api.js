@@ -282,7 +282,14 @@ export function uploadFile(file, onProgress){
         try { localStorage.removeItem(KEY_KEY); } catch {}
         reject(new Error('KEY REJECTED'));
       }
-      else if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
+      else if (xhr.status >= 200 && xhr.status < 300) {
+        let data; try { data = JSON.parse(xhr.responseText); } catch { data = null; }
+        // Old worker has no /upload route → falls through to the track listing (an array).
+        // Detect that so we surface a clear "redeploy" error instead of corrupting state.
+        if (!data || Array.isArray(data) || !data.filename) {
+          reject(new Error('WORKER OUTDATED — redeploy worker.js'));
+        } else resolve(data);
+      }
       else reject(new Error('upload failed ' + xhr.status));
     });
     xhr.addEventListener('error', () => reject(new Error('network error')));

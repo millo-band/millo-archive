@@ -29,7 +29,9 @@ export const STAGE_DITHER = { idea:'dither-25', demo:'dither-50', finished:'dith
 
 export const audio = document.getElementById('audio-player');
 
-export function isVoiceNote(t) { return t.filename && /voice/i.test(t.filename); }
+/* Voice / field recordings: anything with "voice" OR a ZOOM field-recorder name
+   (ZOOM0001.WAV etc — the recorder's default naming) lands in the VOICE tab. */
+export function isVoiceNote(t) { return !!(t.filename && (/voice/i.test(t.filename) || /zoom\s*\d{3,}/i.test(t.filename))); }
 
 // ── Shared mutable state ─────────────────────
 export const state = {

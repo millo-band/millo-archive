@@ -90,15 +90,7 @@ document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
   if(e.key==='/'){e.preventDefault();if(state.activeScreen!=='archive')switchScreen('archive');if(!document.body.classList.contains('search-open'))$('search-btn').click();return;}
   if(e.key==='?'){e.preventDefault();toggleHelp();return;}
-  if(e.key==='Escape'){
-    if(helpOverlay.style.display==='flex'){toggleHelp(false);return;}
-    if(isVoicePickerOpen()){closeVoicePicker();return;}
-    if(document.body.classList.contains('search-open')){$('search-btn').click();return;}
-    if(state.songPageGroup){closeSongPage();return;}
-    if(state.activeScreen==='albums'&&state.openPlaylistId){showAlbumsIndex();return;}
-    if(state.playerExpanded){setPlayerExpanded(false);return;}
-    return;
-  }
+  if(e.key==='Escape'){goBack();return;}
   if(e.code==='Space'){e.preventDefault();togglePlayPause();return;}
   if((e.shiftKey&&e.code==='ArrowRight')||e.key==='.'){if(audio.duration){audio.currentTime=Math.min(audio.duration,audio.currentTime+5);}return;}
   if((e.shiftKey&&e.code==='ArrowLeft')||e.key===','){if(audio.duration){audio.currentTime=Math.max(0,audio.currentTime-5);}return;}
@@ -118,6 +110,49 @@ document.addEventListener('keydown',e=>{
   if(e.key==='3'){switchScreen('vault');return;}
   if(e.key==='4'){switchScreen('voice');return;}
 });
+
+/* ── Unified "back" — Esc key AND swipe-right share this (§ fluid nav) ──
+   Peels one layer at a time: overlays → search → song page → album detail →
+   collapse player. Returns true if something was closed. */
+export function goBack(){
+  if(helpOverlay.style.display==='flex'){toggleHelp(false);return true;}
+  if(isVoicePickerOpen()){closeVoicePicker();return true;}
+  if(document.body.classList.contains('search-open')){$('search-btn').click();return true;}
+  if(state.songPageGroup){closeSongPage();return true;}
+  if(state.activeScreen==='albums'&&state.openPlaylistId){showAlbumsIndex();return true;}
+  if(state.playerExpanded){setPlayerExpanded(false);return true;}
+  return false;
+}
+
+/* ── Swipe navigation (mobile) — make getting around feel fluid ──
+   • Swipe right → back (one layer), matching the OS back gesture.
+   • Horizontal swipe on the bottom tab bar hops between tabs. */
+(function(){
+  let x0=0, y0=0, t0=0, tracking=false;
+  const H_MIN=60, V_MAX=45, T_MAX=600;  // px / ms thresholds
+  document.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1){tracking=false;return;}
+    const t=e.touches[0]; x0=t.clientX; y0=t.clientY; t0=Date.now(); tracking=true;
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!tracking)return; tracking=false;
+    const t=e.changedTouches[0];
+    const dx=t.clientX-x0, dy=t.clientY-y0, dt=Date.now()-t0;
+    if(dt>T_MAX || Math.abs(dx)<H_MIN || Math.abs(dy)>V_MAX) return;
+    // don't hijack swipes that start on a scrubber / slider / horizontal scroller
+    if(e.target.closest('.wave-canvas, input[type=range], .player-versions-list, .pl-two-column')) return;
+
+    // Tab-bar swipe → move between the four screens
+    if(e.target.closest('#tabbar')){
+      const i=SCREENS.indexOf(state.activeScreen);
+      const ni=dx<0 ? Math.min(SCREENS.length-1,i+1) : Math.max(0,i-1);
+      if(ni!==i) switchScreen(SCREENS[ni]);
+      return;
+    }
+    // Swipe right anywhere else → back one layer
+    if(dx>0) goBack();
+  },{passive:true});
+})();
 
 /* ── Boot ── */
 async function init(){

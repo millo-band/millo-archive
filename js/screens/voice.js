@@ -2,7 +2,7 @@
    MILLO ARCHIVE v11 — screens/voice.js
    Voice notes tab + voice → song linking (§6.5).
 ============================================ */
-import { state, $, showToast } from '../core.js';
+import { state, $, showToast, fmtDate } from '../core.js';
 import { getVoiceLinks, setVoiceLink } from '../api.js';
 import { playTrack } from '../player.js';
 import { renderSongPage } from './../songpage.js';
@@ -11,15 +11,30 @@ const el = { voiceList:$('voice-list'), picker:$('voice-picker'), pickerInput:$(
 
 export function renderVoiceList(){
   el.voiceList.innerHTML='';
-  const sorted=[...state.voiceTracks].sort((a,b)=>(a.filename||'').localeCompare(b.filename||''));
+  // newest first — field recordings pile up, the latest ones matter most
+  const sorted=[...state.voiceTracks].sort((a,b)=>{
+    const d=(b.uploaded||'').localeCompare(a.uploaded||'');
+    return d!==0?d:(b.filename||'').localeCompare(a.filename||'');
+  });
   if(!sorted.length){
     const empty=document.createElement('div');empty.className='sp-empty';
-    empty.innerHTML='NO VOICE NOTES.<br><br>ANY FILENAME CONTAINING "VOICE"<br>LANDS HERE.';
+    empty.innerHTML='NO FIELD RECORDINGS.<br><br>ANY FILE NAMED "ZOOM…"<br>OR CONTAINING "VOICE"<br>LANDS HERE.';
     el.voiceList.appendChild(empty);return;
   }
   const links=getVoiceLinks();
-  const hdr=document.createElement('div');hdr.className='voice-header';hdr.textContent=`VOICE NOTES — ${sorted.length}`;el.voiceList.appendChild(hdr);
+  const linkedCount=sorted.filter(t=>links[t.filename]).length;
+  const hdr=document.createElement('div');hdr.className='voice-header';
+  hdr.textContent=`VOICE & FIELD RECORDINGS — ${sorted.length}`+(linkedCount?` · ${linkedCount} LINKED`:'');
+  el.voiceList.appendChild(hdr);
+
+  // group under date headings so a long tape reel is scannable
+  let lastDate=null;
   sorted.forEach((track,i)=>{
+    if(track.uploaded && track.uploaded!==lastDate){
+      lastDate=track.uploaded;
+      const dh=document.createElement('div');dh.className='voice-date-head';dh.textContent=fmtDate(track.uploaded);
+      el.voiceList.appendChild(dh);
+    }
     const row=document.createElement('div');row.className='voice-row';row.dataset.trackIdx=track._idx;
     const num=document.createElement('span');num.className='voice-row-num';num.textContent=String(i+1).padStart(2,'0');
     const title=document.createElement('span');title.className='voice-row-title';title.textContent=track.title||track.filename;

@@ -6,6 +6,10 @@
 /* ══ VOICE NOTES ══════════════════════════════ */
 #voice-list.visible { display: block; width: 100%; }
 .voice-header { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 0.15em; opacity: 0.5; padding: 0 0 10px; }
+.voice-date-head {
+  font-size: 8px; font-weight: 700; letter-spacing: 0.14em; opacity: 0.4;
+  padding: 12px 10px 5px; text-transform: uppercase;
+}
 .voice-row {
   display: flex; align-items: center; gap: 10px; padding: 0 10px; min-height: 48px;
   border-bottom: 1px solid var(--black); cursor: pointer; -webkit-tap-highlight-color: transparent; background: var(--pink);

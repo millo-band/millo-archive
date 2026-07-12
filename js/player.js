@@ -15,7 +15,7 @@ import {
   getLyrics, setLyrics,
 } from './api.js';
 import { generatePixelArt } from './art.js';
-import { Waveform, ensurePeaks } from './waveform.js';
+import { Waveform, ensurePeaks, synthPeaks } from './waveform.js';
 import { render, refreshPlayingState } from './screens/archive.js';
 import { renderPlaylistDetailPage } from './screens/albums.js';
 import { refreshSongPagePlaying } from './songpage.js';
@@ -67,7 +67,11 @@ export const deskWave = new Waveform($('desktop-wave-canvas'), {
 });
 
 function loadPeaksFor(track){
-  wave.setPeaks(null); deskWave.setPeaks(null);
+  // show a deterministic placeholder waveform immediately (no flat bar, works on any
+  // origin even if decode/CORS/peaks are unavailable) …
+  const synth = synthPeaks(track.filename);
+  wave.setPeaks(synth, true); deskWave.setPeaks(synth, true);
+  // … then replace with the real decoded shape the moment it's ready.
   ensurePeaks(track, peaks => {
     if(state.playingTrack && state.playingTrack.filename === track.filename){
       wave.setPeaks(peaks); deskWave.setPeaks(peaks);
